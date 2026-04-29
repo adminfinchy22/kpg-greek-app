@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Phrase } from '../types'
 
+type PhrasesQueryResult = {
+  data: Phrase[] | null
+  error: { message: string } | null
+}
+
 export function usePhrases() {
   const [phrases, setPhrases] = useState<Phrase[]>([])
   const [grouped, setGrouped] = useState<Record<string, Phrase[]>>({})
@@ -14,14 +19,14 @@ export function usePhrases() {
       .select('*')
       .order('topic')
       .order('sort_order')
-      .then(({ data, error }) => {
+      .then(({ data, error }: PhrasesQueryResult) => {
         if (error) {
           setError(error.message)
         } else {
-          const rows = data ?? []
+          const rows: Phrase[] = data ?? []
           setPhrases(rows)
           const g: Record<string, Phrase[]> = {}
-          rows.forEach((p) => {
+          rows.forEach((p: Phrase) => {
             if (!g[p.topic]) g[p.topic] = []
             g[p.topic].push(p)
           })

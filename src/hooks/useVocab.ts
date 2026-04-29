@@ -2,6 +2,16 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { VocabEntry, Topic } from '../types'
 
+type QueryError = { message: string }
+type TopicsQueryResult = {
+  data: Topic[] | null
+  error: QueryError | null
+}
+type VocabQueryResult = {
+  data: VocabEntry[] | null
+  error: QueryError | null
+}
+
 export function useTopics() {
   const [topics, setTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
@@ -12,7 +22,7 @@ export function useTopics() {
       .from('topics')
       .select('*')
       .order('sort_order')
-      .then(({ data, error }) => {
+      .then(({ data, error }: TopicsQueryResult) => {
         if (error) setError(error.message)
         else setTopics(data ?? [])
         setLoading(false)
@@ -35,7 +45,7 @@ export function useVocab(topicId: number | null) {
 
     const filtered = topicId ? query.eq('topic_id', topicId) : query
 
-    filtered.order('id').then(({ data, error }) => {
+    filtered.order('id').then(({ data, error }: VocabQueryResult) => {
       if (error) setError(error.message)
       else setVocab(data ?? [])
       setLoading(false)

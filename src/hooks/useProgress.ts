@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+type KnownProgressRow = { vocab_id: number }
+type ExistingProgressRow = { id: number }
+type UserProgressListQueryResult = { data: KnownProgressRow[] | null }
+
 export function useProgress() {
   const [known, setKnown] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -11,9 +15,9 @@ export function useProgress() {
       .from('user_progress')
       .select('vocab_id')
       .eq('known', true)
-      .then(({ data }) => {
+      .then(({ data }: UserProgressListQueryResult) => {
         if (data) {
-          setKnown(new Set(data.map((r) => r.vocab_id)))
+          setKnown(new Set(data.map((r: KnownProgressRow) => r.vocab_id)))
         }
         setLoading(false)
       })
@@ -35,7 +39,7 @@ export function useProgress() {
       .from('user_progress')
       .select('id')
       .eq('vocab_id', vocabId)
-      .maybeSingle()
+      .maybeSingle<ExistingProgressRow>()
 
     if (existing) {
       await supabase
