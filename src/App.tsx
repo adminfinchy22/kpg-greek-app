@@ -1,122 +1,124 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useMemo } from 'react'
+import { useTopics, useVocab } from './hooks/useVocab'
+import { usePhrases } from './hooks/usePhrases'
+import { useProgress } from './hooks/useProgress'
+import Sidebar from './components/Sidebar'
+import ProgressBar from './components/ProgressBar'
+import Flashcard from './components/Flashcard'
+import PhraseCard from './components/PhraseCard'
+import TestMode from './components/TestMode'
+import TypingCard from './components/TypingCard'
 
-function App() {
-  const [count, setCount] = useState(0)
+type Mode = 'flashcard' | 'phrases' | 'test' | 'typing'
+
+const MODES: { key: Mode; label: string }[] = [
+  { key: 'flashcard', label: 'Карточки' },
+  { key: 'typing',    label: 'Набор'    },
+  { key: 'phrases',   label: 'Фразы'    },
+  { key: 'test',      label: 'Тест'     },
+]
+
+export default function App() {
+  const [mode, setMode]               = useState<Mode>('flashcard')
+  const [selectedTopicId, setTopic]   = useState<number | null>(null)
+
+  const { topics }                    = useTopics()
+  const { vocab: allVocab }           = useVocab(null)
+  const { vocab: filteredVocab }      = useVocab(selectedTopicId)
+  const { grouped, total: phrasesTotal } = usePhrases()
+  const { known, knownCount, toggleKnown } = useProgress()
+
+  const knownCountInTopic = useMemo(() =>
+    filteredVocab.filter((v) => known.has(v.id)).length,
+    [filteredVocab, known]
+  )
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--cream)' }}>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {/* ── HEADER ── */}
+      <div style={{
+        background: 'var(--surface)',
+        borderBottom: '1px solid var(--border)',
+        padding: '16px 24px 0',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '4px' }}>
+          <span style={{
+            fontFamily: "'Playfair Display', serif",
+            fontSize: '20px', fontWeight: 700,
+            color: 'var(--amber-lt)', letterSpacing: '.02em',
+          }}>
+            KPG A2 · Греческий
+          </span>
+          <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
+            Экзамен: 19 мая 2026, Никосия
+          </span>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <ProgressBar known={knownCount} total={allVocab.length} />
+
+        {/* Mode tabs */}
+        <div style={{ display: 'flex' }}>
+          {MODES.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setMode(key)}
+              style={{
+                padding: '9px 22px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: mode === key
+                  ? '2px solid var(--amber)'
+                  : '2px solid transparent',
+                color: mode === key ? 'var(--amber-lt)' : 'var(--cream-dim)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: '12px',
+                textTransform: 'uppercase',
+                letterSpacing: '.06em',
+                transition: 'color 0.15s',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── BODY ── */}
+      <div style={{
+        display: 'flex',
+        maxWidth: '900px',
+        margin: '0 auto',
+        padding: '20px',
+      }}>
+        <Sidebar
+          topics={topics}
+          allVocab={allVocab}
+          selectedTopicId={selectedTopicId}
+          onSelect={setTopic}
+        />
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {mode === 'flashcard' && (
+            <Flashcard
+              vocab={filteredVocab}
+              known={known}
+              knownCountInTopic={knownCountInTopic}
+              onToggleKnown={toggleKnown}
+            />
+          )}
+          {mode === 'typing' && (
+            <TypingCard vocab={filteredVocab} />
+          )}
+          {mode === 'phrases' && (
+            <PhraseCard grouped={grouped} total={phrasesTotal} />
+          )}
+          {mode === 'test' && (
+            <TestMode vocab={filteredVocab} />
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
-
-export default App
