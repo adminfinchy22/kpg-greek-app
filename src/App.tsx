@@ -25,12 +25,51 @@ export default function App() {
   const { topics }                    = useTopics()
   const { vocab: allVocab }           = useVocab(null)
   const { vocab: filteredVocab }      = useVocab(selectedTopicId)
-  const { grouped, total: phrasesTotal } = usePhrases()
+  const { grouped } = usePhrases()
   const { known, knownCount, toggleKnown } = useProgress()
 
   const knownCountInTopic = useMemo(() =>
     filteredVocab.filter((v) => known.has(v.id)).length,
     [filteredVocab, known]
+  )
+  const normalizedTopicNameById = useMemo(() => {
+    const map = new Map<number, string>()
+    topics.forEach((topic) => {
+      map.set(topic.id, topic.name_ru.trim().toLowerCase())
+    })
+    return map
+  }, [topics])
+  const filteredGroupedPhrases = useMemo(() => {
+    if (selectedTopicId === null) return grouped
+    const selectedName = normalizedTopicNameById.get(selectedTopicId)
+    if (!selectedName) return {}
+
+    return Object.fromEntries(
+      Object.entries(grouped).filter(([topicName]) =>
+        topicName.trim().toLowerCase() === selectedName
+      )
+    )
+  }, [grouped, selectedTopicId, normalizedTopicNameById])
+  const filteredPhrasesTotal = useMemo(
+    () => Object.values(filteredGroupedPhrases).reduce((acc, items) => acc + items.length, 0),
+    [filteredGroupedPhrases]
+  )
+  const phraseCountByTopicId = useMemo(() => {
+    const byTopicName = new Map<string, number>()
+    Object.entries(grouped).forEach(([topicName, items]) => {
+      byTopicName.set(topicName.trim().toLowerCase(), items.length)
+    })
+
+    const result: Record<number, number> = {}
+    topics.forEach((topic) => {
+      const normalizedName = topic.name_ru.trim().toLowerCase()
+      result[topic.id] = byTopicName.get(normalizedName) ?? 0
+    })
+    return result
+  }, [grouped, topics])
+  const phrasesTotal = useMemo(
+    () => Object.values(phraseCountByTopicId).reduce((acc, count) => acc + count, 0),
+    [phraseCountByTopicId]
   )
 
   return (
@@ -97,6 +136,8 @@ export default function App() {
           allVocab={allVocab}
           selectedTopicId={selectedTopicId}
           onSelect={setTopic}
+          totalCount={mode === 'phrases' ? phrasesTotal : allVocab.length}
+          countByTopicId={mode === 'phrases' ? phraseCountByTopicId : undefined}
         />
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -112,7 +153,7 @@ export default function App() {
             <TypingCard vocab={filteredVocab} />
           )}
           {mode === 'phrases' && (
-            <PhraseCard grouped={grouped} total={phrasesTotal} />
+            <PhraseCard grouped={filteredGroupedPhrases} total={filteredPhrasesTotal} />
           )}
           {mode === 'test' && (
             <TestMode vocab={filteredVocab} />

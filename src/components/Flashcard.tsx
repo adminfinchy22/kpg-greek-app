@@ -25,6 +25,7 @@ export default function Flashcard({ vocab, known, knownCountInTopic, onToggleKno
   const [flipped, setFlipped] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDeck([...vocab].sort(() => Math.random() - 0.5))
     setIdx(0)
     setFlipped(false)

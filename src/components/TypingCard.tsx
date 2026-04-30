@@ -42,6 +42,7 @@ export default function TypingCard({ vocab }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDeck([...vocab].sort(() => Math.random() - 0.5))
     setIdx(0); setInput(''); setResult(null); setScore({ correct: 0, total: 0 })
   }, [vocab])
@@ -119,7 +120,12 @@ export default function TypingCard({ vocab }: Props) {
         ref={inputRef}
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') result === null ? check() : next() }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            if (result === null) check()
+            else next()
+          }
+        }}
         disabled={result !== null}
         placeholder="Введите греческое слово..."
         style={{

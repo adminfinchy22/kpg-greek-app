@@ -20,9 +20,10 @@ export default function TestMode({ vocab }: Props) {
   }, [vocab])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setScore({ correct: 0, total: 0 })
     genQuestion()
-  }, [vocab])
+  }, [genQuestion, vocab])
 
   const handleAnswer = (opt: VocabEntry) => {
     if (answered || !question) return

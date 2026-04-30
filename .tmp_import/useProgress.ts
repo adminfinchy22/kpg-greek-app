@@ -26,7 +26,8 @@ export function useProgress() {
     // Optimistic UI update
     setKnown((prev) => {
       const next = new Set(prev)
-      isKnown ? next.delete(vocabId) : next.add(vocabId)
+      if (isKnown) next.delete(vocabId)
+      else next.add(vocabId)
       return next
     })
 

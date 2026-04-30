@@ -5,11 +5,21 @@ interface Props {
   allVocab: VocabEntry[]
   selectedTopicId: number | null
   onSelect: (topicId: number | null) => void
+  totalCount?: number
+  countByTopicId?: Record<number, number>
 }
 
-export default function Sidebar({ topics, allVocab, selectedTopicId, onSelect }: Props) {
+export default function Sidebar({
+  topics,
+  allVocab,
+  selectedTopicId,
+  onSelect,
+  totalCount,
+  countByTopicId,
+}: Props) {
   const countFor = (topicId: number) =>
-    allVocab.filter((v) => v.topic_id === topicId).length
+    countByTopicId?.[topicId] ?? allVocab.filter((v) => v.topic_id === topicId).length
+  const displayTotal = totalCount ?? allVocab.length
 
   return (
     <div style={{ width: '190px', flexShrink: 0, marginRight: '20px' }}>
@@ -21,7 +31,7 @@ export default function Sidebar({ topics, allVocab, selectedTopicId, onSelect }:
       </div>
 
       <SidebarItem
-        label={`Все (${allVocab.length})`}
+        label={`Все (${displayTotal})`}
         active={selectedTopicId === null}
         onClick={() => onSelect(null)}
       />

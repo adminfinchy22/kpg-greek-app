@@ -28,6 +28,7 @@ export function useVocab(topicId: number | null) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     const query = supabase
       .from('vocab')
