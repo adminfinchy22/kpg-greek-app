@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { VocabEntry, Topic } from '../types'
 
@@ -17,19 +17,26 @@ export function useTopics() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const fetchTopics = useCallback(() => {
+    setLoading(true)
+    setError(null)
     supabase
       .from('topics')
       .select('*')
       .order('sort_order')
-      .then(({ data, error }: TopicsQueryResult) => {
-        if (error) setError(error.message)
+      .then(({ data, error: qError }: TopicsQueryResult) => {
+        if (qError) setError(qError.message)
         else setTopics(data ?? [])
         setLoading(false)
       })
   }, [])
 
-  return { topics, loading, error }
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount / refetch entry
+    fetchTopics()
+  }, [fetchTopics])
+
+  return { topics, loading, error, refetch: fetchTopics }
 }
 
 export function useVocab(topicId: number | null) {
@@ -37,21 +44,26 @@ export function useVocab(topicId: number | null) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+  const fetchVocab = useCallback(() => {
     setLoading(true)
+    setError(null)
     const query = supabase
       .from('vocab')
       .select('*, topic:topics(id, name_ru, sort_order)')
 
     const filtered = topicId ? query.eq('topic_id', topicId) : query
 
-    filtered.order('id').then(({ data, error }: VocabQueryResult) => {
-      if (error) setError(error.message)
+    filtered.order('id').then(({ data, error: qError }: VocabQueryResult) => {
+      if (qError) setError(qError.message)
       else setVocab(data ?? [])
       setLoading(false)
     })
   }, [topicId])
 
-  return { vocab, loading, error }
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount / topicId / refetch
+    fetchVocab()
+  }, [fetchVocab])
+
+  return { vocab, loading, error, refetch: fetchVocab }
 }

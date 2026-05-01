@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { shuffleCopy } from '../lib/shuffle'
 import type { VocabEntry } from '../types'
 
 interface Props {
@@ -43,7 +44,7 @@ export default function TypingCard({ vocab }: Props) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDeck([...vocab].sort(() => Math.random() - 0.5))
+    setDeck(shuffleCopy(vocab))
     setIdx(0); setInput(''); setResult(null); setScore({ correct: 0, total: 0 })
   }, [vocab])
 

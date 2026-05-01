@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { shuffleCopy } from '../lib/shuffle'
 import type { VocabEntry, TestQuestion } from '../types'
 
 interface Props {
@@ -12,9 +13,9 @@ export default function TestMode({ vocab }: Props) {
 
   const genQuestion = useCallback(() => {
     if (vocab.length < 4) return
-    const shuffled = [...vocab].sort(() => Math.random() - 0.5)
-    const correct = shuffled[0]
-    const opts = [...shuffled.slice(1, 4), correct].sort(() => Math.random() - 0.5)
+    const shuffled = shuffleCopy(vocab)
+    const correct = shuffled[0]!
+    const opts = shuffleCopy([...shuffled.slice(1, 4), correct])
     setQuestion({ correct, opts })
     setAnswered(null)
   }, [vocab])

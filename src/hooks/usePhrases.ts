@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Phrase } from '../types'
 
@@ -13,15 +13,17 @@ export function usePhrases() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const fetchPhrases = useCallback(() => {
+    setLoading(true)
+    setError(null)
     supabase
       .from('phrases')
       .select('*')
       .order('topic')
       .order('sort_order')
-      .then(({ data, error }: PhrasesQueryResult) => {
-        if (error) {
-          setError(error.message)
+      .then(({ data, error: qError }: PhrasesQueryResult) => {
+        if (qError) {
+          setError(qError.message)
         } else {
           const rows: Phrase[] = data ?? []
           setPhrases(rows)
@@ -36,5 +38,10 @@ export function usePhrases() {
       })
   }, [])
 
-  return { phrases, grouped, total: phrases.length, loading, error }
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount / refetch entry
+    fetchPhrases()
+  }, [fetchPhrases])
+
+  return { phrases, grouped, total: phrases.length, loading, error, refetch: fetchPhrases }
 }

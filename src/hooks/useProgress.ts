@@ -2,66 +2,95 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 type KnownProgressRow = { vocab_id: number }
-type ExistingProgressRow = { id: number }
-type UserProgressListQueryResult = { data: KnownProgressRow[] | null }
+type ExistingProgressRow = { id: number; review_count: number | null }
 
 export function useProgress() {
   const [known, setKnown] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Load all known vocab IDs on mount
-  useEffect(() => {
+  const fetchProgress = useCallback(() => {
+    setLoading(true)
+    setError(null)
     supabase
       .from('user_progress')
       .select('vocab_id')
       .eq('known', true)
-      .then(({ data }: UserProgressListQueryResult) => {
-        if (data) {
-          setKnown(new Set(data.map((r: KnownProgressRow) => r.vocab_id)))
+      .then(({ data, error: qError }) => {
+        if (qError) {
+          setError(qError.message)
+        } else {
+          setKnown(new Set((data ?? []).map((r: KnownProgressRow) => r.vocab_id)))
         }
         setLoading(false)
       })
   }, [])
 
-  // Toggle a word as known / unknown
-  const toggleKnown = useCallback(async (vocabId: number) => {
-    const isKnown = known.has(vocabId)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount / refetch entry
+    fetchProgress()
+  }, [fetchProgress])
 
-    // Optimistic UI update
+  const toggleKnown = useCallback(async (vocabId: number) => {
+    const wasKnown = known.has(vocabId)
+
     setKnown((prev) => {
       const next = new Set(prev)
-      if (isKnown) next.delete(vocabId)
+      if (wasKnown) next.delete(vocabId)
       else next.add(vocabId)
       return next
     })
 
-    // Check if a progress row already exists
-    const { data: existing } = await supabase
-      .from('user_progress')
-      .select('id')
-      .eq('vocab_id', vocabId)
-      .maybeSingle<ExistingProgressRow>()
-
-    if (existing) {
-      await supabase
-        .from('user_progress')
-        .update({
-          known: !isKnown,
-          last_reviewed: new Date().toISOString(),
-          review_count: existing ? undefined : 1,
-        })
-        .eq('vocab_id', vocabId)
-    } else {
-      await supabase.from('user_progress').insert({
-        vocab_id: vocabId,
-        known: true,
-        last_reviewed: new Date().toISOString(),
-        review_count: 1,
+    const rollback = () => {
+      setKnown((prev) => {
+        const next = new Set(prev)
+        if (wasKnown) next.add(vocabId)
+        else next.delete(vocabId)
+        return next
       })
+    }
+
+    try {
+      const { data: existing, error: selectError } = await supabase
+        .from('user_progress')
+        .select('id, review_count')
+        .eq('vocab_id', vocabId)
+        .maybeSingle<ExistingProgressRow>()
+
+      if (selectError) throw selectError
+
+      const now = new Date().toISOString()
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from('user_progress')
+          .update({
+            known: !wasKnown,
+            last_reviewed: now,
+            review_count: (existing.review_count ?? 0) + 1,
+          })
+          .eq('vocab_id', vocabId)
+
+        if (updateError) throw updateError
+      } else {
+        if (wasKnown) {
+          rollback()
+          return
+        }
+        const { error: insertError } = await supabase.from('user_progress').insert({
+          vocab_id: vocabId,
+          known: true,
+          last_reviewed: now,
+          review_count: 1,
+        })
+        if (insertError) throw insertError
+      }
+    } catch {
+      rollback()
     }
   }, [known])
 
   const knownCount = known.size
 
-  return { known, knownCount, toggleKnown, loading }
+  return { known, knownCount, toggleKnown, loading, error, refetch: fetchProgress }
 }

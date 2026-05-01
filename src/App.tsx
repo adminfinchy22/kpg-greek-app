@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useTopics, useVocab } from './hooks/useVocab'
 import { usePhrases } from './hooks/usePhrases'
 import { useProgress } from './hooks/useProgress'
@@ -22,11 +22,72 @@ export default function App() {
   const [mode, setMode]               = useState<Mode>('flashcard')
   const [selectedTopicId, setTopic]   = useState<number | null>(null)
 
-  const { topics }                    = useTopics()
-  const { vocab: allVocab }           = useVocab(null)
-  const { vocab: filteredVocab }      = useVocab(selectedTopicId)
-  const { grouped } = usePhrases()
-  const { known, knownCount, toggleKnown } = useProgress()
+  const { topics, loading: topicsLoading, error: topicsError, refetch: refetchTopics } =
+    useTopics()
+  const {
+    vocab: allVocab,
+    loading: allVocabLoading,
+    error: allVocabError,
+    refetch: refetchAllVocab,
+  } = useVocab(null)
+  const {
+    vocab: filteredVocab,
+    loading: filteredVocabLoading,
+    error: filteredVocabError,
+    refetch: refetchFilteredVocab,
+  } = useVocab(selectedTopicId)
+  const {
+    grouped,
+    loading: phrasesLoading,
+    error: phrasesError,
+    refetch: refetchPhrases,
+  } = usePhrases()
+  const {
+    known,
+    knownCount,
+    toggleKnown,
+    loading: progressLoading,
+    error: progressError,
+    refetch: refetchProgress,
+  } = useProgress()
+
+  const bootLoading =
+    topicsLoading ||
+    allVocabLoading ||
+    filteredVocabLoading ||
+    phrasesLoading ||
+    progressLoading
+
+  const loadError = useMemo(() => {
+    const parts = [
+      topicsError,
+      allVocabError,
+      filteredVocabError,
+      phrasesError,
+      progressError,
+    ].filter((m): m is string => Boolean(m))
+    return [...new Set(parts)].join(' · ') || null
+  }, [
+    topicsError,
+    allVocabError,
+    filteredVocabError,
+    phrasesError,
+    progressError,
+  ])
+
+  const retryLoad = useCallback(() => {
+    refetchTopics()
+    refetchAllVocab()
+    refetchFilteredVocab()
+    refetchPhrases()
+    refetchProgress()
+  }, [
+    refetchTopics,
+    refetchAllVocab,
+    refetchFilteredVocab,
+    refetchPhrases,
+    refetchProgress,
+  ])
 
   const knownCountInTopic = useMemo(() =>
     filteredVocab.filter((v) => known.has(v.id)).length,
@@ -71,6 +132,60 @@ export default function App() {
     () => Object.values(phraseCountByTopicId).reduce((acc, count) => acc + count, 0),
     [phraseCountByTopicId]
   )
+
+  const shellStyle: React.CSSProperties = {
+    minHeight: '100vh',
+    background: 'var(--bg)',
+    color: 'var(--cream)',
+  }
+
+  if (loadError) {
+    return (
+      <div style={shellStyle}>
+        <div style={{ maxWidth: '440px', margin: '0 auto', padding: '20vh 24px 24px', textAlign: 'center' }}>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', color: 'var(--amber-lt)', marginBottom: '12px' }}>
+            KPG A2 · Греческий
+          </p>
+          <p style={{ color: 'var(--red)', marginBottom: '10px', fontSize: '14px' }}>
+            Не удалось загрузить данные
+          </p>
+          <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: 1.5, marginBottom: '22px' }}>
+            {loadError}
+          </p>
+          <button
+            type="button"
+            onClick={retryLoad}
+            style={{
+              padding: '10px 28px',
+              background: 'var(--amber)',
+              border: 'none',
+              color: '#0d1b2a',
+              fontWeight: 600,
+              borderRadius: '6px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Повторить
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (bootLoading) {
+    return (
+      <div style={shellStyle}>
+        <div style={{ textAlign: 'center', paddingTop: '22vh', color: 'var(--muted)', fontSize: '14px' }}>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', color: 'var(--amber-lt)', marginBottom: '14px' }}>
+            KPG A2 · Греческий
+          </p>
+          Загрузка…
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--cream)' }}>

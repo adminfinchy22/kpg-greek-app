@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { shuffleCopy } from '../lib/shuffle'
 import type { VocabEntry } from '../types'
 
 interface Props {
@@ -26,7 +27,7 @@ export default function Flashcard({ vocab, known, knownCountInTopic, onToggleKno
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDeck([...vocab].sort(() => Math.random() - 0.5))
+    setDeck(shuffleCopy(vocab))
     setIdx(0)
     setFlipped(false)
   }, [vocab])
@@ -39,7 +40,7 @@ export default function Flashcard({ vocab, known, knownCountInTopic, onToggleKno
   }
 
   const shuffle = () => {
-    setDeck([...vocab].sort(() => Math.random() - 0.5))
+    setDeck(shuffleCopy(vocab))
     setIdx(0)
     setFlipped(false)
   }
