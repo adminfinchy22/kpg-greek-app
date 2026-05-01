@@ -1,7 +1,13 @@
 import { useState, useMemo, useCallback } from 'react'
-import { useTopics, useVocab } from './hooks/useVocab'
 import { usePhrases } from './hooks/usePhrases'
 import { useProgress } from './hooks/useProgress'
+import { useTopics, useVocab } from './hooks/useVocab'
+import {
+  buildNormalizedTopicNameById,
+  filterGroupedPhrasesByTopicSelection,
+  phraseCountByTopicId,
+  sumGroupedPhraseCounts,
+} from './lib/phraseTopic'
 import Sidebar from './components/Sidebar'
 import ProgressBar from './components/ProgressBar'
 import Flashcard from './components/Flashcard'
@@ -93,44 +99,25 @@ export default function App() {
     filteredVocab.filter((v) => known.has(v.id)).length,
     [filteredVocab, known]
   )
-  const normalizedTopicNameById = useMemo(() => {
-    const map = new Map<number, string>()
-    topics.forEach((topic) => {
-      map.set(topic.id, topic.name_ru.trim().toLowerCase())
-    })
-    return map
-  }, [topics])
-  const filteredGroupedPhrases = useMemo(() => {
-    if (selectedTopicId === null) return grouped
-    const selectedName = normalizedTopicNameById.get(selectedTopicId)
-    if (!selectedName) return {}
-
-    return Object.fromEntries(
-      Object.entries(grouped).filter(([topicName]) =>
-        topicName.trim().toLowerCase() === selectedName
-      )
-    )
-  }, [grouped, selectedTopicId, normalizedTopicNameById])
+  const normalizedTopicNameById = useMemo(
+    () => buildNormalizedTopicNameById(topics),
+    [topics]
+  )
+  const filteredGroupedPhrases = useMemo(
+    () => filterGroupedPhrasesByTopicSelection(grouped, selectedTopicId, normalizedTopicNameById),
+    [grouped, selectedTopicId, normalizedTopicNameById]
+  )
   const filteredPhrasesTotal = useMemo(
-    () => Object.values(filteredGroupedPhrases).reduce((acc, items) => acc + items.length, 0),
+    () => sumGroupedPhraseCounts(filteredGroupedPhrases),
     [filteredGroupedPhrases]
   )
-  const phraseCountByTopicId = useMemo(() => {
-    const byTopicName = new Map<string, number>()
-    Object.entries(grouped).forEach(([topicName, items]) => {
-      byTopicName.set(topicName.trim().toLowerCase(), items.length)
-    })
-
-    const result: Record<number, number> = {}
-    topics.forEach((topic) => {
-      const normalizedName = topic.name_ru.trim().toLowerCase()
-      result[topic.id] = byTopicName.get(normalizedName) ?? 0
-    })
-    return result
-  }, [grouped, topics])
+  const phraseCountByTopicIdMap = useMemo(
+    () => phraseCountByTopicId(grouped, topics),
+    [grouped, topics]
+  )
   const phrasesTotal = useMemo(
-    () => Object.values(phraseCountByTopicId).reduce((acc, count) => acc + count, 0),
-    [phraseCountByTopicId]
+    () => Object.values(phraseCountByTopicIdMap).reduce((acc, count) => acc + count, 0),
+    [phraseCountByTopicIdMap]
   )
 
   const shellStyle: React.CSSProperties = {
@@ -252,7 +239,7 @@ export default function App() {
           selectedTopicId={selectedTopicId}
           onSelect={setTopic}
           totalCount={mode === 'phrases' ? phrasesTotal : allVocab.length}
-          countByTopicId={mode === 'phrases' ? phraseCountByTopicId : undefined}
+          countByTopicId={mode === 'phrases' ? phraseCountByTopicIdMap : undefined}
         />
 
         <div style={{ flex: 1, minWidth: 0 }}>
