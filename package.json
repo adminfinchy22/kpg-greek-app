@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:unit": "vitest run",
-    "test:e2e": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test"
+    "test:e2e": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test",
+    "db:gen-verb-forms": "node scripts/gen-sprint-6a-verb-forms-sql.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { isCloseGreek, isCorrectGreek } from '../lib/greekMatch'
 import { shuffleCopy } from '../lib/shuffle'
 import type { VocabEntry } from '../types'
 
@@ -7,31 +8,6 @@ interface Props {
 }
 
 type Result = 'correct' | 'close' | 'wrong' | null
-
-// Strip Greek accent marks for loose comparison
-function stripAccents(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
-}
-
-// Accept if exact match OR accent-stripped match
-function isCorrect(input: string, target: string): boolean {
-  const i = input.trim().toLowerCase()
-  const t = target.trim().toLowerCase()
-  return i === t || stripAccents(i) === stripAccents(t)
-}
-
-// "Close" = only one character off (useful feedback)
-function isClose(input: string, target: string): boolean {
-  const i = stripAccents(input.trim())
-  const t = stripAccents(target.trim())
-  if (Math.abs(i.length - t.length) > 2) return false
-  let diff = 0
-  const len = Math.max(i.length, t.length)
-  for (let n = 0; n < len; n++) {
-    if (i[n] !== t[n]) diff++
-  }
-  return diff <= 2
-}
 
 export default function TypingCard({ vocab }: Props) {
   const [deck, setDeck]       = useState<VocabEntry[]>([])
@@ -57,10 +33,8 @@ export default function TypingCard({ vocab }: Props) {
   const check = useCallback(() => {
     if (!card || result !== null) return
     const target = card.greek
-    const ok = strictMode
-      ? input.trim().toLowerCase() === target.trim().toLowerCase()
-      : isCorrect(input, target)
-    const close = !ok && isClose(input, target)
+    const ok = isCorrectGreek(input, target, strictMode)
+    const close = !ok && isCloseGreek(input, target)
     const r: Result = ok ? 'correct' : close ? 'close' : 'wrong'
     setResult(r)
     setScore((s) => ({ correct: s.correct + (ok ? 1 : 0), total: s.total + 1 }))

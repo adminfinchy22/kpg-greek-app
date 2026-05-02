@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { usePhrases } from './hooks/usePhrases'
 import { useProgress } from './hooks/useProgress'
 import { useTopics, useVocab } from './hooks/useVocab'
+import { useVerbs } from './hooks/useVerbs'
 import {
   buildNormalizedTopicNameById,
   filterGroupedPhrasesByTopicSelection,
@@ -14,19 +15,22 @@ import Flashcard from './components/Flashcard'
 import PhraseCard from './components/PhraseCard'
 import TestMode from './components/TestMode'
 import TypingCard from './components/TypingCard'
+import VerbsPanel from './components/VerbsPanel'
 
-type Mode = 'flashcard' | 'phrases' | 'test' | 'typing'
+type Mode = 'flashcard' | 'phrases' | 'test' | 'typing' | 'verbs'
 
 const MODES: { key: Mode; label: string }[] = [
   { key: 'flashcard', label: 'Карточки' },
   { key: 'typing',    label: 'Набор'    },
   { key: 'phrases',   label: 'Фразы'    },
   { key: 'test',      label: 'Тест'     },
+  { key: 'verbs',     label: 'Глаголы'  },
 ]
 
 export default function App() {
   const [mode, setMode]               = useState<Mode>('flashcard')
   const [selectedTopicId, setTopic]   = useState<number | null>(null)
+  const [verbSemanticGroup, setVerbSemanticGroup] = useState<string | null>(null)
 
   const { topics, loading: topicsLoading, error: topicsError, refetch: refetchTopics } =
     useTopics()
@@ -56,6 +60,17 @@ export default function App() {
     error: progressError,
     refetch: refetchProgress,
   } = useProgress()
+
+  const {
+    verbs,
+    loading: verbsLoading,
+    error: verbsError,
+    refetch: refetchVerbs,
+  } = useVerbs({
+    topicId: selectedTopicId,
+    semanticGroup: verbSemanticGroup,
+    enabled: mode === 'verbs',
+  })
 
   const bootLoading =
     topicsLoading ||
@@ -87,12 +102,14 @@ export default function App() {
     refetchFilteredVocab()
     refetchPhrases()
     refetchProgress()
+    refetchVerbs()
   }, [
     refetchTopics,
     refetchAllVocab,
     refetchFilteredVocab,
     refetchPhrases,
     refetchProgress,
+    refetchVerbs,
   ])
 
   const knownCountInTopic = useMemo(() =>
@@ -118,6 +135,16 @@ export default function App() {
   const phrasesTotal = useMemo(
     () => Object.values(phraseCountByTopicIdMap).reduce((acc, count) => acc + count, 0),
     [phraseCountByTopicIdMap]
+  )
+
+  const flatPhrasesForVerbs = useMemo(
+    () => Object.values(filteredGroupedPhrases).flat(),
+    [filteredGroupedPhrases],
+  )
+
+  const verbsKnownInTopic = useMemo(
+    () => verbs.filter((v) => known.has(v.id)).length,
+    [verbs, known],
   )
 
   const shellStyle: React.CSSProperties = {
@@ -240,6 +267,9 @@ export default function App() {
           onSelect={setTopic}
           totalCount={mode === 'phrases' ? phrasesTotal : allVocab.length}
           countByTopicId={mode === 'phrases' ? phraseCountByTopicIdMap : undefined}
+          showVerbSemanticFilter={mode === 'verbs'}
+          verbSemanticGroup={verbSemanticGroup}
+          onVerbSemanticGroup={setVerbSemanticGroup}
         />
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -259,6 +289,41 @@ export default function App() {
           )}
           {mode === 'test' && (
             <TestMode vocab={filteredVocab} />
+          )}
+          {mode === 'verbs' && (
+            verbsLoading ? (
+              <div style={{ color: 'var(--muted)', fontSize: '14px' }}>Загрузка глаголов…</div>
+            ) : verbsError ? (
+              <div style={{ color: 'var(--red)', fontSize: '14px' }}>
+                {verbsError}
+                <button
+                  type="button"
+                  onClick={() => refetchVerbs()}
+                  style={{
+                    display: 'block',
+                    marginTop: '12px',
+                    padding: '8px 16px',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--cream)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: '13px',
+                  }}
+                >
+                  Повторить
+                </button>
+              </div>
+            ) : (
+              <VerbsPanel
+                verbs={verbs}
+                phrases={flatPhrasesForVerbs}
+                known={known}
+                knownCountInTopic={verbsKnownInTopic}
+                onToggleKnown={toggleKnown}
+              />
+            )
           )}
         </div>
       </div>

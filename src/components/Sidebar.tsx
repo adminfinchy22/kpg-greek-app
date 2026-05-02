@@ -1,4 +1,5 @@
 import type { Topic, VocabEntry } from '../types'
+import { VERB_SEMANTIC_GROUPS } from '../types'
 
 interface Props {
   topics: Topic[]
@@ -7,6 +8,10 @@ interface Props {
   onSelect: (topicId: number | null) => void
   totalCount?: number
   countByTopicId?: Record<number, number>
+  /** Глаголы tab: filter by `semantic_group` */
+  verbSemanticGroup?: string | null
+  onVerbSemanticGroup?: (group: string | null) => void
+  showVerbSemanticFilter?: boolean
 }
 
 export default function Sidebar({
@@ -16,13 +21,58 @@ export default function Sidebar({
   onSelect,
   totalCount,
   countByTopicId,
+  verbSemanticGroup = null,
+  onVerbSemanticGroup,
+  showVerbSemanticFilter = false,
 }: Props) {
   const countFor = (topicId: number) =>
     countByTopicId?.[topicId] ?? allVocab.filter((v) => v.topic_id === topicId).length
   const displayTotal = totalCount ?? allVocab.length
 
+  const verbsInTopic = (topicId: number) =>
+    allVocab.filter(
+      (v) =>
+        v.topic_id === topicId &&
+        v.pos === 'verb' &&
+        (!verbSemanticGroup || v.semantic_group === verbSemanticGroup),
+    ).length
+
+  const verbsTotalFiltered =
+    allVocab.filter(
+      (v) =>
+        v.pos === 'verb' &&
+        (!verbSemanticGroup || v.semantic_group === verbSemanticGroup),
+    ).length
+
+  const topicListTotal = showVerbSemanticFilter ? verbsTotalFiltered : displayTotal
+
   return (
     <div style={{ width: '190px', flexShrink: 0, marginRight: '20px' }}>
+      {showVerbSemanticFilter && onVerbSemanticGroup && (
+        <>
+          <div style={{
+            fontSize: '10px', textTransform: 'uppercase',
+            letterSpacing: '.1em', color: 'var(--muted)', marginBottom: '8px',
+          }}>
+            Группа
+          </div>
+          <SidebarItem
+            label="Все группы"
+            active={verbSemanticGroup === null}
+            onClick={() => onVerbSemanticGroup(null)}
+          />
+          {VERB_SEMANTIC_GROUPS.map(({ value, labelRu }) => (
+            <SidebarItem
+              key={value}
+              label={labelRu}
+              active={verbSemanticGroup === value}
+              onClick={() => onVerbSemanticGroup(value)}
+            />
+          ))}
+          <div style={{ height: '16px' }} />
+        </>
+      )}
+
       <div style={{
         fontSize: '10px', textTransform: 'uppercase',
         letterSpacing: '.1em', color: 'var(--muted)', marginBottom: '8px',
@@ -31,7 +81,7 @@ export default function Sidebar({
       </div>
 
       <SidebarItem
-        label={`Все (${displayTotal})`}
+        label={`Все (${topicListTotal})`}
         active={selectedTopicId === null}
         onClick={() => onSelect(null)}
       />
@@ -39,7 +89,7 @@ export default function Sidebar({
       {topics.map((t) => (
         <SidebarItem
           key={t.id}
-          label={`${t.name_ru} (${countFor(t.id)})`}
+          label={`${t.name_ru} (${showVerbSemanticFilter ? verbsInTopic(t.id) : countFor(t.id)})`}
           active={selectedTopicId === t.id}
           onClick={() => onSelect(t.id)}
         />
