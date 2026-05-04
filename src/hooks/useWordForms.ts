@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { wantsNounDeclension } from '../lib/vocabFormsPolicy'
 import type { NounForm, VerbForm } from '../types'
 
 export type WordFormsData =
@@ -34,6 +35,12 @@ export function useWordForms(vocabId: number | null, pos: string | null | undefi
           else setData({ kind: 'verb', forms: (d ?? []) as VerbForm[] })
           setLoading(false)
         })
+      return
+    }
+
+    if (!wantsNounDeclension(pos)) {
+      setData({ kind: 'none' })
+      setLoading(false)
       return
     }
 

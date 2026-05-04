@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { formForPersonTense } from '../lib/verbFormLookup'
 import { PERSON_LABEL_SHORT, PERSON_ORDER } from '../lib/verbLabels'
+import { wantsNounDeclension } from '../lib/vocabFormsPolicy'
 import { useWordExamples } from '../hooks/useWordExamples'
 import { useWordForms } from '../hooks/useWordForms'
 import type { VocabEntry } from '../types'
@@ -36,7 +37,21 @@ export default function WordDetail({ word, onClose, onStartTrain }: Props) {
   }, [verbForms])
 
   const posLabel =
-    word.pos === 'verb' ? 'глагол' : word.pos === 'adv' ? 'нареч.' : word.pos ? word.pos : 'слово'
+    word.pos === 'verb'
+      ? 'глагол'
+      : word.pos === 'adj'
+        ? 'прилаг.'
+        : word.pos === 'adv'
+          ? 'нареч.'
+          : word.pos === 'expression'
+            ? 'выражение'
+            : word.pos === 'noun'
+              ? 'сущ.'
+              : word.pos
+                ? word.pos
+                : 'слово'
+
+  const showNounGrid = wantsNounDeclension(word.pos)
 
   return (
     <div
@@ -107,12 +122,11 @@ export default function WordDetail({ word, onClose, onStartTrain }: Props) {
           <p style={{ color: 'var(--muted)', fontSize: '13px' }}>Загрузка…</p>
         ) : (
           <>
-            <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--muted)', marginBottom: '8px' }}>
-              Формы
-            </div>
-
             {word.pos === 'verb' && (
               <>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--muted)', marginBottom: '8px' }}>
+                  Формы
+                </div>
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
                   {(tensesPresent.length ? tensesPresent : TENSE_TABS).map(({ key, label }) => (
                     <button
@@ -147,32 +161,32 @@ export default function WordDetail({ word, onClose, onStartTrain }: Props) {
               </>
             )}
 
-            {word.pos !== 'verb' && formsData.kind === 'noun' && formsData.forms && (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '18px' }}>
-                <tbody>
-                  {[
-                    ['nom.sg', formsData.forms.nom_sg],
-                    ['acc.sg', formsData.forms.acc_sg],
-                    ['gen.sg', formsData.forms.gen_sg],
-                    ['nom.pl', formsData.forms.nom_pl],
-                  ].map(([label, val]) => (
-                    <tr key={String(label)}>
-                      <td style={{ padding: '6px 8px 6px 0', color: 'var(--muted)' }}>{label}</td>
-                      <td style={{ padding: '6px 0', fontFamily: 'Georgia, serif' }}>{val ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {word.pos !== 'verb' && formsData.kind === 'noun' && !formsData.forms && (
-              <p style={{ color: 'var(--muted)', fontSize: '13px', marginBottom: '16px' }}>Склонения пока не добавлены.</p>
-            )}
-
-            {word.pos === 'adj' && (
-              <p style={{ color: 'var(--muted)', fontSize: '13px', marginBottom: '16px' }}>
-                Формы прилагательных (род) — в следующем обновлении.
-              </p>
+            {showNounGrid && (
+              <>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--muted)', marginBottom: '8px' }}>
+                  Склонение
+                </div>
+                {formsData.kind === 'noun' && formsData.forms && (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '18px' }}>
+                    <tbody>
+                      {[
+                        ['nom.sg', formsData.forms.nom_sg],
+                        ['acc.sg', formsData.forms.acc_sg],
+                        ['gen.sg', formsData.forms.gen_sg],
+                        ['nom.pl', formsData.forms.nom_pl],
+                      ].map(([label, val]) => (
+                        <tr key={String(label)}>
+                          <td style={{ padding: '6px 8px 6px 0', color: 'var(--muted)' }}>{label}</td>
+                          <td style={{ padding: '6px 0', fontFamily: 'Georgia, serif' }}>{val ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {formsData.kind === 'noun' && !formsData.forms && (
+                  <p style={{ color: 'var(--muted)', fontSize: '13px', marginBottom: '16px' }}>Склонения пока не добавлены.</p>
+                )}
+              </>
             )}
 
             <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--muted)', marginBottom: '8px' }}>
