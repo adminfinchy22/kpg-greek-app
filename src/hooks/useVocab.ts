@@ -22,7 +22,7 @@ export function useTopics() {
     setError(null)
     supabase
       .from('topics')
-      .select('*')
+      .select('id, name_ru, sort_order')
       .order('sort_order')
       .then(({ data, error: qError }: TopicsQueryResult) => {
         if (qError) setError(qError.message)
@@ -39,12 +39,20 @@ export function useTopics() {
   return { topics, loading, error, refetch: fetchTopics }
 }
 
-export function useVocab(topicId: number | null) {
+export function useVocab(topicId: number | null, options?: { enabled?: boolean }) {
+  const enabled = options?.enabled !== false
   const [vocab, setVocab] = useState<VocabEntry[]>([])
-  const [loading, setLoading] = useState(true)
+  /** When disabled, do not block the shell on first paint (catalog home). */
+  const [loading, setLoading] = useState(enabled)
   const [error, setError] = useState<string | null>(null)
 
   const fetchVocab = useCallback(() => {
+    if (!enabled) {
+      setVocab([])
+      setError(null)
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     const query = supabase
@@ -58,7 +66,7 @@ export function useVocab(topicId: number | null) {
       else setVocab(data ?? [])
       setLoading(false)
     })
-  }, [topicId])
+  }, [topicId, enabled])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount / topicId / refetch

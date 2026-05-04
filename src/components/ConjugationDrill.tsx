@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { shuffleCopy } from '../lib/shuffle'
 import { isCloseGreek, isCorrectGreek } from '../lib/greekMatch'
 import { PERSON_LABEL_EL, PERSON_ORDER } from '../lib/verbLabels'
+import { formForPersonTense } from '../lib/verbFormLookup'
 import type { Verb, VerbPerson } from '../types'
 
 interface Props {
@@ -15,8 +16,8 @@ function pickPerson(): VerbPerson {
 }
 
 function formFor(verb: Verb, person: VerbPerson): string | null {
-  const row = verb.verb_forms?.find((f) => f.person === person)
-  return row?.form ?? null
+  const f = formForPersonTense(verb.verb_forms, person, 'present')
+  return f === '—' ? null : f
 }
 
 export default function ConjugationDrill({ verbs }: Props) {

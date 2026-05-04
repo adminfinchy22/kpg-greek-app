@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { shuffleCopy } from '../lib/shuffle'
 import { PERSON_ORDER, PERSON_LABEL_SHORT } from '../lib/verbLabels'
+import { formForPersonTense } from '../lib/verbFormLookup'
 import type { Verb, VerbForm, VerbPerson } from '../types'
 
 interface Props {
@@ -22,7 +23,7 @@ const btn: React.CSSProperties = {
 }
 
 function formForPerson(forms: VerbForm[], person: VerbPerson): string {
-  return forms.find((f) => f.person === person)?.form ?? '—'
+  return formForPersonTense(forms, person, 'present')
 }
 
 export default function VerbCard({ verbs, known, knownCountInTopic, onToggleKnown }: Props) {

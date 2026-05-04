@@ -20,6 +20,7 @@ interface Props {
   known: Set<number>
   knownCountInTopic: number
   onToggleKnown: (id: number) => void
+  onOpenVerb?: (v: Verb) => void
 }
 
 export default function VerbsPanel({
@@ -28,6 +29,7 @@ export default function VerbsPanel({
   known,
   knownCountInTopic,
   onToggleKnown,
+  onOpenVerb,
 }: Props) {
   const [sub, setSub] = useState<VerbSubMode>('conjugate')
 
@@ -57,7 +59,7 @@ export default function VerbsPanel({
         ))}
       </div>
 
-      {sub === 'list' && <VerbList verbs={verbs} />}
+      {sub === 'list' && <VerbList verbs={verbs} onOpenVerb={onOpenVerb} />}
       {sub === 'cards' && (
         <VerbCard
           verbs={verbs}

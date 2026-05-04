@@ -25,7 +25,8 @@ function unwrapVerbForms(f: VerbForm[] | VerbForm | null | undefined): VerbForm[
 }
 
 export interface UseVerbsOptions {
-  topicId: number | null
+  /** When set, restrict to this topic; omit or null = all topics */
+  topicId?: number | null
   /** When set, only verbs with this `semantic_group` */
   semanticGroup: string | null
   /** When false, skip fetch (e.g. other tabs) */
@@ -46,7 +47,7 @@ function normalizeVerb(row: VerbRow): Verb {
   }
 }
 
-export function useVerbs({ topicId, semanticGroup, enabled = true }: UseVerbsOptions) {
+export function useVerbs({ topicId = null, semanticGroup, enabled = true }: UseVerbsOptions) {
   const [verbs, setVerbs] = useState<Verb[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -79,7 +80,7 @@ export function useVerbs({ topicId, semanticGroup, enabled = true }: UseVerbsOpt
       )
       .eq('pos', 'verb')
 
-    if (topicId !== null) q = q.eq('topic_id', topicId)
+    if (topicId != null) q = q.eq('topic_id', topicId)
     if (semanticGroup) q = q.eq('semantic_group', semanticGroup)
 
     q.order('id').then((res) => {

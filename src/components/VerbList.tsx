@@ -1,16 +1,17 @@
+import { formForPersonTense } from '../lib/verbFormLookup'
 import { PERSON_ORDER, PERSON_LABEL_SHORT } from '../lib/verbLabels'
 import type { Verb, VerbForm, VerbPerson } from '../types'
 
 interface Props {
   verbs: Verb[]
+  onOpenVerb?: (v: Verb) => void
 }
 
 function formForPerson(forms: VerbForm[], person: VerbPerson): string {
-  const row = forms.find((f) => f.person === person)
-  return row?.form ?? '—'
+  return formForPersonTense(forms, person, 'present')
 }
 
-export default function VerbList({ verbs }: Props) {
+export default function VerbList({ verbs, onOpenVerb }: Props) {
   if (verbs.length === 0) {
     return (
       <div style={{ color: 'var(--muted)', fontSize: '14px' }}>
@@ -34,12 +35,17 @@ export default function VerbList({ verbs }: Props) {
       {verbs.map((v) => (
         <div
           key={v.id}
+          role={onOpenVerb ? 'button' : undefined}
+          tabIndex={onOpenVerb ? 0 : undefined}
+          onClick={() => onOpenVerb?.(v)}
+          onKeyDown={(e) => onOpenVerb && (e.key === 'Enter' || e.key === ' ') && onOpenVerb(v)}
           style={{
             marginBottom: '18px',
             padding: '14px 16px',
             background: 'var(--card)',
             border: '1px solid var(--border)',
             borderRadius: '10px',
+            cursor: onOpenVerb ? 'pointer' : undefined,
           }}
         >
           <div style={{ marginBottom: '10px' }}>
