@@ -70,11 +70,28 @@ BEGIN
   LIMIT 1;
 
   IF id_keep IS NOT NULL AND id_drop IS NOT NULL THEN
-    -- Preserve “known” if either row was marked known (single global progress row per vocab_id)
-    UPDATE user_progress u
-    SET known = true
-    WHERE u.vocab_id = id_keep
-      AND EXISTS (SELECT 1 FROM user_progress d WHERE d.vocab_id = id_drop AND d.known = true);
+    -- Preserve progress before deleting the duplicate vocab row.
+    IF EXISTS (SELECT 1 FROM user_progress WHERE vocab_id = id_keep) THEN
+      UPDATE user_progress u
+      SET
+        known = COALESCE(u.known, false) OR COALESCE(d.known, false),
+        last_reviewed = COALESCE(GREATEST(u.last_reviewed, d.last_reviewed), u.last_reviewed, d.last_reviewed),
+        review_count = GREATEST(COALESCE(u.review_count, 0), COALESCE(d.review_count, 0))
+      FROM (
+        SELECT
+          bool_or(COALESCE(known, false)) AS known,
+          max(last_reviewed) AS last_reviewed,
+          max(COALESCE(review_count, 0)) AS review_count
+        FROM user_progress
+        WHERE vocab_id = id_drop
+      ) d
+      WHERE u.vocab_id = id_keep
+        AND EXISTS (SELECT 1 FROM user_progress WHERE vocab_id = id_drop);
+    ELSE
+      UPDATE user_progress
+      SET vocab_id = id_keep
+      WHERE vocab_id = id_drop;
+    END IF;
 
     DELETE FROM user_progress WHERE vocab_id = id_drop;
     DELETE FROM vocab WHERE id = id_drop;
