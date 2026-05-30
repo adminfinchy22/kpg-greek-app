@@ -118,7 +118,7 @@ export default function App() {
     [phraseCountByTopicIdMap],
   )
 
-  const flatPhrasesForVerbs = useMemo(() => Object.values(filteredGroupedPhrases).flat(), [filteredGroupedPhrases])
+  const flatPhrasesForVerbs = useMemo(() => Object.values(grouped).flat(), [grouped])
 
   const knownCountInTopic = useMemo(
     () => catalogTopicVocab.filter((v) => known.has(v.id)).length,
@@ -144,11 +144,7 @@ export default function App() {
 
   const onTrainingDone = useCallback(
     async (ids: number[]) => {
-      try {
-        await recordTrainingReview(ids)
-      } catch {
-        /* non-fatal */
-      }
+      await recordTrainingReview(ids)
       refetchProgress()
     },
     [recordTrainingReview, refetchProgress],
@@ -381,10 +377,7 @@ export default function App() {
         distractorPool={trainPool}
         verbFormMap={trainVerbMap}
         onClose={() => setTrainOpen(false)}
-        onComplete={(ids) => {
-          void onTrainingDone(ids)
-          setTrainOpen(false)
-        }}
+        onComplete={onTrainingDone}
       />
     </div>
   )
