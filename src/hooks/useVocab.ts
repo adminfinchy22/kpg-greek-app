@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { VocabEntry, Topic } from '../types'
 
@@ -45,8 +45,10 @@ export function useVocab(topicId: number | null, options?: { enabled?: boolean }
   /** When disabled, do not block the shell on first paint (catalog home). */
   const [loading, setLoading] = useState(enabled)
   const [error, setError] = useState<string | null>(null)
+  const requestIdRef = useRef(0)
 
   const fetchVocab = useCallback(() => {
+    const requestId = ++requestIdRef.current
     if (!enabled) {
       setVocab([])
       setError(null)
@@ -62,6 +64,7 @@ export function useVocab(topicId: number | null, options?: { enabled?: boolean }
     const filtered = topicId ? query.eq('topic_id', topicId) : query
 
     filtered.order('id').then(({ data, error: qError }: VocabQueryResult) => {
+      if (requestId !== requestIdRef.current) return
       if (qError) setError(qError.message)
       else setVocab(data ?? [])
       setLoading(false)
