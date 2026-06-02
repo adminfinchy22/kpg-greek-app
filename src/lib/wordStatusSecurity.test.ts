@@ -1,15 +1,16 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const migrationsDir = join(process.cwd(), 'supabase', 'migrations')
+const migrations = import.meta.glob('../../supabase/migrations/*.sql', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+}) as Record<string, string>
 
 function migrationStatements(): string[] {
-  return readdirSync(migrationsDir)
-    .filter((file) => file.endsWith('.sql'))
-    .sort()
-    .flatMap((file) =>
-      readFileSync(join(migrationsDir, file), 'utf8')
+  return Object.entries(migrations)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .flatMap(([, sql]) =>
+      sql
         .split(';')
         .map((statement) => statement.trim())
         .filter(Boolean),
