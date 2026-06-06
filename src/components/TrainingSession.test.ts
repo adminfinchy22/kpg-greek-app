@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { completeTrainingResult } from './TrainingSession'
+import { completeTrainingResult } from '../lib/trainingCompletion'
 
 describe('completeTrainingResult', () => {
   it('waits for persistence before closing', async () => {

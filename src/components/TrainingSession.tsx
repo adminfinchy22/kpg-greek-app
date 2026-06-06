@@ -1,20 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isCloseGreek, isCorrectGreek } from '../lib/greekMatch'
 import { PERSON_LABEL_EL } from '../lib/verbLabels'
+import { completeTrainingResult, type TrainingCompleteHandler } from '../lib/trainingCompletion'
 import { useWordExamples } from '../hooks/useWordExamples'
 import { useTrainingSession } from '../hooks/useTrainingSession'
 import type { VerbForm, VocabEntry, VerbPerson } from '../types'
-
-export type TrainingCompleteHandler = (vocabIds: number[]) => void | Promise<void>
-
-export async function completeTrainingResult(
-  vocabIds: number[],
-  onComplete: TrainingCompleteHandler,
-  onClose: () => void,
-) {
-  await onComplete(vocabIds)
-  onClose()
-}
 
 interface Props {
   open: boolean
@@ -50,6 +40,7 @@ export default function TrainingSession({
   useEffect(() => {
     if (open) {
       reset()
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- modal-local state must reset when a new training session opens
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
