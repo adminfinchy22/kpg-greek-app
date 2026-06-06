@@ -5,6 +5,17 @@ import { useWordExamples } from '../hooks/useWordExamples'
 import { useTrainingSession } from '../hooks/useTrainingSession'
 import type { VerbForm, VocabEntry, VerbPerson } from '../types'
 
+export type TrainingCompleteHandler = (vocabIds: number[]) => void | Promise<void>
+
+export async function completeTrainingResult(
+  vocabIds: number[],
+  onComplete: TrainingCompleteHandler,
+  onClose: () => void,
+) {
+  await onComplete(vocabIds)
+  onClose()
+}
+
 interface Props {
   open: boolean
   words: VocabEntry[]
@@ -12,7 +23,7 @@ interface Props {
   /** Pre-fetched so the step queue includes conjugation before first paint. */
   verbFormMap: Map<number, VerbForm[]>
   onClose: () => void
-  onComplete: (vocabIds: number[]) => void
+  onComplete: TrainingCompleteHandler
 }
 
 export default function TrainingSession({
@@ -27,6 +38,8 @@ export default function TrainingSession({
   const [typingInput, setTypingInput] = useState('')
   const [typingResult, setTypingResult] = useState<'correct' | 'close' | 'wrong' | null>(null)
   const [strictMode, setStrictMode] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { step, idx, progressLabel, reset, goNext, submitGraded, correct, graded } = useTrainingSession(
     words,
@@ -40,11 +53,14 @@ export default function TrainingSession({
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
+      setSaving(false)
+      setSaveError(null)
     }
   }, [open, reset, words])
 
   const handleClose = useCallback(() => {
     setConfirmEnd(false)
+    setSaveError(null)
     onClose()
   }, [onClose])
 
@@ -138,15 +154,27 @@ export default function TrainingSession({
               <p style={{ color: 'var(--cream-dim)', marginBottom: '20px' }}>
                 Верно: {correct} из {graded}
               </p>
+              {saveError && (
+                <p style={{ color: 'var(--red)', fontSize: '13px', lineHeight: 1.45, marginBottom: '12px' }}>
+                  Не удалось сохранить прогресс: {saveError}
+                </p>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  onComplete(words.map((w) => w.id))
-                  handleClose()
+                disabled={saving}
+                onClick={async () => {
+                  setSaving(true)
+                  setSaveError(null)
+                  try {
+                    await completeTrainingResult(words.map((w) => w.id), onComplete, handleClose)
+                  } catch (err) {
+                    setSaveError(err instanceof Error ? err.message : 'попробуйте еще раз')
+                    setSaving(false)
+                  }
                 }}
-                style={primaryBtn}
+                style={{ ...primaryBtn, opacity: saving ? 0.7 : 1, cursor: saving ? 'wait' : 'pointer' }}
               >
-                Продолжить
+                {saving ? 'Сохраняем…' : 'Продолжить'}
               </button>
             </div>
           )}
