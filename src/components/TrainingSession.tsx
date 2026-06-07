@@ -36,6 +36,7 @@ export default function TrainingSession({
     verbFormMap,
   )
 
+  /* eslint-disable react-hooks/set-state-in-effect -- opening a session resets transient modal fields. */
   useEffect(() => {
     if (open) {
       reset()
@@ -46,6 +47,7 @@ export default function TrainingSession({
       setCompleteError(null)
     }
   }, [open, reset, words])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleClose = useCallback(() => {
     setConfirmEnd(false)
