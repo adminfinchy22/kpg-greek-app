@@ -37,6 +37,7 @@ export default function TrainingSession({
     verbFormMap,
   )
 
+  /* eslint-disable react-hooks/set-state-in-effect -- opening the modal resets local step/input/save state */
   useEffect(() => {
     if (open) {
       reset()
@@ -47,6 +48,7 @@ export default function TrainingSession({
       setSaveError(null)
     }
   }, [open, reset, words])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const finishAndClose = useCallback(async () => {
     setSaving(true)
