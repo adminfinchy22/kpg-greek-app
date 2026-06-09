@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isCloseGreek, isCorrectGreek } from '../lib/greekMatch'
 import { PERSON_LABEL_EL } from '../lib/verbLabels'
+import { completeTrainingSession } from '../lib/trainingCompletion'
 import { useWordExamples } from '../hooks/useWordExamples'
 import { useTrainingSession } from '../hooks/useTrainingSession'
 import type { VerbForm, VocabEntry, VerbPerson } from '../types'
@@ -12,7 +13,7 @@ interface Props {
   /** Pre-fetched so the step queue includes conjugation before first paint. */
   verbFormMap: Map<number, VerbForm[]>
   onClose: () => void
-  onComplete: (vocabIds: number[]) => void
+  onComplete: (vocabIds: number[]) => void | Promise<void>
 }
 
 export default function TrainingSession({
@@ -27,6 +28,8 @@ export default function TrainingSession({
   const [typingInput, setTypingInput] = useState('')
   const [typingResult, setTypingResult] = useState<'correct' | 'close' | 'wrong' | null>(null)
   const [strictMode, setStrictMode] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { step, idx, progressLabel, reset, goNext, submitGraded, correct, graded } = useTrainingSession(
     words,
@@ -34,19 +37,39 @@ export default function TrainingSession({
     verbFormMap,
   )
 
+  /* eslint-disable react-hooks/set-state-in-effect -- opening the modal resets local step/input/save state */
   useEffect(() => {
     if (open) {
       reset()
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
+      setSaving(false)
+      setSaveError(null)
     }
   }, [open, reset, words])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const finishAndClose = useCallback(async () => {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await completeTrainingSession(words.map((w) => w.id), onComplete, onClose)
+    } catch {
+      setSaveError('Не удалось сохранить прогресс. Проверьте подключение и попробуйте ещё раз.')
+      setSaving(false)
+    }
+  }, [onClose, onComplete, words])
 
   const handleClose = useCallback(() => {
+    if (saving) return
+    if (step?.type === 'results') {
+      void finishAndClose()
+      return
+    }
     setConfirmEnd(false)
     onClose()
-  }, [onClose])
+  }, [finishAndClose, onClose, saving, step?.type])
 
   if (!open) return null
 
@@ -55,7 +78,7 @@ export default function TrainingSession({
       <div style={panelStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{progressLabel}</span>
-          <button type="button" onClick={() => setConfirmEnd(true)} style={ghostBtn}>
+          <button type="button" onClick={() => setConfirmEnd(true)} disabled={saving} style={ghostBtn}>
             ✕
           </button>
         </div>
@@ -64,10 +87,10 @@ export default function TrainingSession({
           <div style={{ marginBottom: '14px', padding: '12px', background: 'var(--card)', borderRadius: '8px', fontSize: '13px' }}>
             <p style={{ margin: '0 0 10px' }}>Завершить тренировку?</p>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" onClick={() => setConfirmEnd(false)} style={ghostBtn}>
+              <button type="button" onClick={() => setConfirmEnd(false)} disabled={saving} style={ghostBtn}>
                 Продолжить
               </button>
-              <button type="button" onClick={handleClose} style={{ ...ghostBtn, color: 'var(--red)' }}>
+              <button type="button" onClick={handleClose} disabled={saving} style={{ ...ghostBtn, color: 'var(--red)' }}>
                 Выйти
               </button>
             </div>
@@ -138,15 +161,14 @@ export default function TrainingSession({
               <p style={{ color: 'var(--cream-dim)', marginBottom: '20px' }}>
                 Верно: {correct} из {graded}
               </p>
+              {saveError && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '12px' }}>{saveError}</p>}
               <button
                 type="button"
-                onClick={() => {
-                  onComplete(words.map((w) => w.id))
-                  handleClose()
-                }}
+                onClick={() => void finishAndClose()}
+                disabled={saving}
                 style={primaryBtn}
               >
-                Продолжить
+                {saving ? 'Сохраняем…' : 'Продолжить'}
               </button>
             </div>
           )}

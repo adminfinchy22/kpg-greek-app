@@ -86,7 +86,8 @@ CREATE POLICY "word_examples_select_public"
   USING (true);
 
 -- ── word_status view (PostgREST) ─────────────────────────────────────────────
-CREATE OR REPLACE VIEW public.word_status AS
+CREATE OR REPLACE VIEW public.word_status
+WITH (security_invoker = true) AS
 SELECT
   v.id AS vocab_id,
   v.greek,
