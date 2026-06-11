@@ -52,6 +52,11 @@ DO $$
 DECLARE
   id_keep bigint;
   id_drop bigint;
+  progress_keep_id bigint;
+  progress_drop_id bigint;
+  merged_known boolean;
+  merged_review_count integer;
+  merged_last_reviewed timestamptz;
 BEGIN
   SELECT v.id INTO id_keep
   FROM vocab v
@@ -70,11 +75,45 @@ BEGIN
   LIMIT 1;
 
   IF id_keep IS NOT NULL AND id_drop IS NOT NULL THEN
-    -- Preserve “known” if either row was marked known (single global progress row per vocab_id)
-    UPDATE user_progress u
-    SET known = true
-    WHERE u.vocab_id = id_keep
-      AND EXISTS (SELECT 1 FROM user_progress d WHERE d.vocab_id = id_drop AND d.known = true);
+    -- Preserve the duplicate row's progress before deleting it.
+    SELECT
+      COALESCE(bool_or(COALESCE(known, false)), false),
+      max(review_count),
+      max(last_reviewed)
+    INTO merged_known, merged_review_count, merged_last_reviewed
+    FROM user_progress
+    WHERE vocab_id IN (id_keep, id_drop);
+
+    SELECT id INTO progress_keep_id
+    FROM user_progress
+    WHERE vocab_id = id_keep
+    ORDER BY id
+    LIMIT 1;
+
+    IF progress_keep_id IS NOT NULL THEN
+      UPDATE user_progress
+      SET
+        known = merged_known,
+        review_count = merged_review_count,
+        last_reviewed = merged_last_reviewed
+      WHERE id = progress_keep_id;
+    ELSE
+      SELECT id INTO progress_drop_id
+      FROM user_progress
+      WHERE vocab_id = id_drop
+      ORDER BY id
+      LIMIT 1;
+
+      IF progress_drop_id IS NOT NULL THEN
+        UPDATE user_progress
+        SET
+          vocab_id = id_keep,
+          known = merged_known,
+          review_count = merged_review_count,
+          last_reviewed = merged_last_reviewed
+        WHERE id = progress_drop_id;
+      END IF;
+    END IF;
 
     DELETE FROM user_progress WHERE vocab_id = id_drop;
     DELETE FROM vocab WHERE id = id_drop;
