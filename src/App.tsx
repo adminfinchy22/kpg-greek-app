@@ -144,14 +144,9 @@ export default function App() {
 
   const onTrainingDone = useCallback(
     async (ids: number[]) => {
-      try {
-        await recordTrainingReview(ids)
-      } catch {
-        /* non-fatal */
-      }
-      refetchProgress()
+      await recordTrainingReview(ids)
     },
-    [recordTrainingReview, refetchProgress],
+    [recordTrainingReview],
   )
 
   const shellStyle: React.CSSProperties = {

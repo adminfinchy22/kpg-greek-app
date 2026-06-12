@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 type ProgressRow = {
@@ -22,35 +22,37 @@ export function useProgress() {
   >({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const hasLoadedProgressRef = useRef(false)
 
-  const fetchProgress = useCallback(() => {
-    setLoading(true)
+  const fetchProgress = useCallback(async () => {
+    if (!hasLoadedProgressRef.current) setLoading(true)
     setError(null)
-    supabase
+    const { data, error: qError } = await supabase
       .from('user_progress')
       .select('vocab_id, known, due_at, review_count, last_reviewed')
-      .then(({ data, error: qError }) => {
-        if (qError) {
-          setError(qError.message)
-        } else {
-          const rows = (data ?? []) as ProgressRow[]
-          const byId: Record<number, { known: boolean; due_at: string | null; review_count: number }> =
-            {}
-          const learned = new Set<number>()
-          for (const r of rows) {
-            const k = Boolean(r.known)
-            byId[r.vocab_id] = {
-              known: k,
-              due_at: r.due_at ?? null,
-              review_count: r.review_count ?? 0,
-            }
-            if (k) learned.add(r.vocab_id)
-          }
-          setProgressByVocabId(byId)
-          setKnown(learned)
-        }
-        setLoading(false)
-      })
+
+    if (qError) {
+      setError(qError.message)
+      setLoading(false)
+      return
+    }
+
+    const rows = (data ?? []) as ProgressRow[]
+    const byId: Record<number, { known: boolean; due_at: string | null; review_count: number }> = {}
+    const learned = new Set<number>()
+    for (const r of rows) {
+      const k = Boolean(r.known)
+      byId[r.vocab_id] = {
+        known: k,
+        due_at: r.due_at ?? null,
+        review_count: r.review_count ?? 0,
+      }
+      if (k) learned.add(r.vocab_id)
+    }
+    setProgressByVocabId(byId)
+    setKnown(learned)
+    hasLoadedProgressRef.current = true
+    setLoading(false)
   }, [])
 
   useEffect(() => {
