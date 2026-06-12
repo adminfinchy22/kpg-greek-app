@@ -12,7 +12,7 @@ interface Props {
   /** Pre-fetched so the step queue includes conjugation before first paint. */
   verbFormMap: Map<number, VerbForm[]>
   onClose: () => void
-  onComplete: (vocabIds: number[]) => void
+  onComplete: (vocabIds: number[]) => Promise<void> | void
 }
 
 export default function TrainingSession({
@@ -27,6 +27,8 @@ export default function TrainingSession({
   const [typingInput, setTypingInput] = useState('')
   const [typingResult, setTypingResult] = useState<'correct' | 'close' | 'wrong' | null>(null)
   const [strictMode, setStrictMode] = useState(false)
+  const [completing, setCompleting] = useState(false)
+  const [completionError, setCompletionError] = useState<string | null>(null)
 
   const { step, idx, progressLabel, reset, goNext, submitGraded, correct, graded } = useTrainingSession(
     words,
@@ -40,6 +42,8 @@ export default function TrainingSession({
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
+      setCompleting(false)
+      setCompletionError(null)
     }
   }, [open, reset, words])
 
@@ -138,15 +142,28 @@ export default function TrainingSession({
               <p style={{ color: 'var(--cream-dim)', marginBottom: '20px' }}>
                 Верно: {correct} из {graded}
               </p>
+              {completionError && (
+                <p style={{ color: 'var(--red)', marginBottom: '12px', fontSize: '13px', lineHeight: 1.4 }}>
+                  Не удалось сохранить прогресс: {completionError}
+                </p>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  onComplete(words.map((w) => w.id))
-                  handleClose()
+                disabled={completing}
+                onClick={async () => {
+                  setCompleting(true)
+                  setCompletionError(null)
+                  try {
+                    await onComplete(words.map((w) => w.id))
+                    handleClose()
+                  } catch (err) {
+                    setCompletionError(err instanceof Error ? err.message : 'попробуйте еще раз')
+                    setCompleting(false)
+                  }
                 }}
-                style={primaryBtn}
+                style={{ ...primaryBtn, opacity: completing ? 0.7 : 1, cursor: completing ? 'default' : 'pointer' }}
               >
-                Продолжить
+                {completing ? 'Сохранение...' : 'Продолжить'}
               </button>
             </div>
           )}
