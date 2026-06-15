@@ -38,12 +38,14 @@ export default function TrainingSession({
 
   useEffect(() => {
     if (open) {
+      /* eslint-disable react-hooks/set-state-in-effect -- reset transient modal state when a session opens. */
       reset()
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
       setSaving(false)
       setSaveError(null)
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [open, reset, words])
 
