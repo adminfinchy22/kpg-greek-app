@@ -144,14 +144,9 @@ export default function App() {
 
   const onTrainingDone = useCallback(
     async (ids: number[]) => {
-      try {
-        await recordTrainingReview(ids)
-      } catch {
-        /* non-fatal */
-      }
-      refetchProgress()
+      await recordTrainingReview(ids)
     },
-    [recordTrainingReview, refetchProgress],
+    [recordTrainingReview],
   )
 
   const shellStyle: React.CSSProperties = {
@@ -381,8 +376,8 @@ export default function App() {
         distractorPool={trainPool}
         verbFormMap={trainVerbMap}
         onClose={() => setTrainOpen(false)}
-        onComplete={(ids) => {
-          void onTrainingDone(ids)
+        onComplete={async (ids) => {
+          await onTrainingDone(ids)
           setTrainOpen(false)
         }}
       />
