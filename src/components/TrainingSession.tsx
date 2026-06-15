@@ -12,7 +12,7 @@ interface Props {
   /** Pre-fetched so the step queue includes conjugation before first paint. */
   verbFormMap: Map<number, VerbForm[]>
   onClose: () => void
-  onComplete: (vocabIds: number[]) => void
+  onComplete: (vocabIds: number[]) => Promise<void> | void
 }
 
 export default function TrainingSession({
@@ -27,6 +27,8 @@ export default function TrainingSession({
   const [typingInput, setTypingInput] = useState('')
   const [typingResult, setTypingResult] = useState<'correct' | 'close' | 'wrong' | null>(null)
   const [strictMode, setStrictMode] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { step, idx, progressLabel, reset, goNext, submitGraded, correct, graded } = useTrainingSession(
     words,
@@ -40,6 +42,8 @@ export default function TrainingSession({
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
+      setSaving(false)
+      setSaveError(null)
     }
   }, [open, reset, words])
 
@@ -47,6 +51,19 @@ export default function TrainingSession({
     setConfirmEnd(false)
     onClose()
   }, [onClose])
+
+  const handleComplete = useCallback(async () => {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await onComplete(words.map((w) => w.id))
+      handleClose()
+    } catch (err) {
+      setSaveError(err instanceof Error && err.message ? err.message : 'Не удалось сохранить прогресс. Попробуйте ещё раз.')
+    } finally {
+      setSaving(false)
+    }
+  }, [handleClose, onComplete, words])
 
   if (!open) return null
 
@@ -141,13 +158,18 @@ export default function TrainingSession({
               <button
                 type="button"
                 onClick={() => {
-                  onComplete(words.map((w) => w.id))
-                  handleClose()
+                  void handleComplete()
                 }}
-                style={primaryBtn}
+                disabled={saving}
+                style={{ ...primaryBtn, opacity: saving ? 0.75 : 1, cursor: saving ? 'wait' : 'pointer' }}
               >
-                Продолжить
+                {saving ? 'Сохраняем…' : 'Продолжить'}
               </button>
+              {saveError && (
+                <p style={{ color: 'var(--red)', marginTop: '12px', fontSize: '13px', lineHeight: 1.4 }}>
+                  {saveError}
+                </p>
+              )}
             </div>
           )}
         </div>
