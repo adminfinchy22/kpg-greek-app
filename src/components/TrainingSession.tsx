@@ -12,7 +12,7 @@ interface Props {
   /** Pre-fetched so the step queue includes conjugation before first paint. */
   verbFormMap: Map<number, VerbForm[]>
   onClose: () => void
-  onComplete: (vocabIds: number[]) => void
+  onComplete: (vocabIds: number[]) => Promise<void> | void
 }
 
 export default function TrainingSession({
@@ -27,6 +27,8 @@ export default function TrainingSession({
   const [typingInput, setTypingInput] = useState('')
   const [typingResult, setTypingResult] = useState<'correct' | 'close' | 'wrong' | null>(null)
   const [strictMode, setStrictMode] = useState(false)
+  const [savingProgress, setSavingProgress] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { step, idx, progressLabel, reset, goNext, submitGraded, correct, graded } = useTrainingSession(
     words,
@@ -34,19 +36,39 @@ export default function TrainingSession({
     verbFormMap,
   )
 
+  const resetSessionUi = useCallback(() => {
+    reset()
+    setTypingInput('')
+    setTypingResult(null)
+    setConfirmEnd(false)
+    setSavingProgress(false)
+    setSaveError(null)
+  }, [reset])
+
   useEffect(() => {
     if (open) {
-      reset()
-      setTypingInput('')
-      setTypingResult(null)
-      setConfirmEnd(false)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset transient modal state when a session opens or changes words
+      resetSessionUi()
     }
-  }, [open, reset, words])
+  }, [open, resetSessionUi, words])
 
   const handleClose = useCallback(() => {
     setConfirmEnd(false)
     onClose()
   }, [onClose])
+
+  const handleComplete = useCallback(async () => {
+    if (savingProgress) return
+    setSavingProgress(true)
+    setSaveError(null)
+    try {
+      await onComplete(words.map((w) => w.id))
+      handleClose()
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Не удалось сохранить прогресс')
+      setSavingProgress(false)
+    }
+  }, [handleClose, onComplete, savingProgress, words])
 
   if (!open) return null
 
@@ -140,14 +162,17 @@ export default function TrainingSession({
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  onComplete(words.map((w) => w.id))
-                  handleClose()
-                }}
+                onClick={() => void handleComplete()}
+                disabled={savingProgress}
                 style={primaryBtn}
               >
-                Продолжить
+                {savingProgress ? 'Сохранение...' : 'Продолжить'}
               </button>
+              {saveError && (
+                <p style={{ color: 'var(--red)', fontSize: '12px', lineHeight: 1.4, margin: '12px 0 0' }}>
+                  Не удалось сохранить прогресс: {saveError}. Проверьте соединение и попробуйте снова.
+                </p>
+              )}
             </div>
           )}
         </div>
