@@ -46,7 +46,10 @@ export default function TrainingSession({
   }, [reset])
 
   useEffect(() => {
-    if (open) resetSessionUi()
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset transient modal state when a session opens or changes words
+      resetSessionUi()
+    }
   }, [open, resetSessionUi, words])
 
   const handleClose = useCallback(() => {
