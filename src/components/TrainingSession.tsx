@@ -39,13 +39,14 @@ export default function TrainingSession({
 
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- modal-open reset must happen before user input resumes
+      /* eslint-disable react-hooks/set-state-in-effect -- modal-open reset must happen before user input resumes */
       reset()
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
       setSaving(false)
       setSaveError(null)
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [open, reset, words])
 
