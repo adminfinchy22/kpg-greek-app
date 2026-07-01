@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isCloseGreek, isCorrectGreek } from '../lib/greekMatch'
 import { PERSON_LABEL_EL } from '../lib/verbLabels'
+import { saveTrainingProgress } from '../lib/trainingCompletion'
 import { useWordExamples } from '../hooks/useWordExamples'
 import { useTrainingSession } from '../hooks/useTrainingSession'
 import type { VerbForm, VocabEntry, VerbPerson } from '../types'
@@ -12,7 +13,7 @@ interface Props {
   /** Pre-fetched so the step queue includes conjugation before first paint. */
   verbFormMap: Map<number, VerbForm[]>
   onClose: () => void
-  onComplete: (vocabIds: number[]) => void
+  onComplete: (vocabIds: number[]) => void | Promise<void>
 }
 
 export default function TrainingSession({
@@ -27,6 +28,8 @@ export default function TrainingSession({
   const [typingInput, setTypingInput] = useState('')
   const [typingResult, setTypingResult] = useState<'correct' | 'close' | 'wrong' | null>(null)
   const [strictMode, setStrictMode] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { step, idx, progressLabel, reset, goNext, submitGraded, correct, graded } = useTrainingSession(
     words,
@@ -36,10 +39,13 @@ export default function TrainingSession({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- modal-open reset must happen before user input resumes
       reset()
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
+      setSaving(false)
+      setSaveError(null)
     }
   }, [open, reset, words])
 
@@ -138,15 +144,29 @@ export default function TrainingSession({
               <p style={{ color: 'var(--cream-dim)', marginBottom: '20px' }}>
                 Верно: {correct} из {graded}
               </p>
+              {saveError && (
+                <p style={{ color: 'var(--red)', marginBottom: '12px', fontSize: '13px', lineHeight: 1.4 }}>
+                  {saveError}
+                </p>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  onComplete(words.map((w) => w.id))
+                disabled={saving}
+                onClick={async () => {
+                  if (saving) return
+                  setSaving(true)
+                  setSaveError(null)
+                  const error = await saveTrainingProgress(onComplete, words.map((w) => w.id))
+                  setSaving(false)
+                  if (error) {
+                    setSaveError(error)
+                    return
+                  }
                   handleClose()
                 }}
-                style={primaryBtn}
+                style={{ ...primaryBtn, opacity: saving ? 0.7 : 1, cursor: saving ? 'default' : 'pointer' }}
               >
-                Продолжить
+                {saving ? 'Сохраняем…' : 'Продолжить'}
               </button>
             </div>
           )}
