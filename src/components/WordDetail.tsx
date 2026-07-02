@@ -30,7 +30,7 @@ export default function WordDetail({ word, onClose, onStartTrain }: Props) {
   const { examples, loading: exLoading } = useWordExamples(word.id)
   const [verbTense, setVerbTense] = useState('present')
 
-  const verbForms = formsData.kind === 'verb' ? formsData.forms : []
+  const verbForms = useMemo(() => (formsData.kind === 'verb' ? formsData.forms : []), [formsData])
   const tensesPresent = useMemo(() => {
     const s = new Set(verbForms.map((f) => f.tense))
     return TENSE_TABS.filter((t) => s.has(t.key))
