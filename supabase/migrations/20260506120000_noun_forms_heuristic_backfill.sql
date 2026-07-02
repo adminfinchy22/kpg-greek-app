@@ -1,5 +1,5 @@
 -- Heuristic backfill for noun_forms (A2-style: nom.sg / acc.sg / gen.sg / nom.pl)
--- Targets vocab.pos = 'noun' without a noun_forms row. Strips leading article from greek.
+-- Targets explicit nouns and legacy untagged noun rows without a noun_forms row. Strips leading article from greek.
 -- Patterns: neuter -μα/-ιο/-ο, feminine -η/-α, masculine -ος; else all four = lemma (safe fallback).
 -- Re-run safe: ON CONFLICT DO UPDATE.
 
@@ -135,7 +135,7 @@ SELECT
   i.nom_pl
 FROM public.vocab v
 CROSS JOIN LATERAL public._noun_forms_infer(public._lemma_strip_article(v.greek)) AS i(nom_sg, acc_sg, gen_sg, nom_pl)
-WHERE v.pos = 'noun'
+WHERE (v.pos = 'noun' OR v.pos IS NULL)
   AND NOT EXISTS (SELECT 1 FROM public.noun_forms nf WHERE nf.vocab_id = v.id)
   AND i.nom_sg IS NOT NULL
 ON CONFLICT (vocab_id) DO UPDATE SET
@@ -143,17 +143,6 @@ ON CONFLICT (vocab_id) DO UPDATE SET
   acc_sg = EXCLUDED.acc_sg,
   gen_sg = EXCLUDED.gen_sg,
   nom_pl = EXCLUDED.nom_pl;
-
--- Optional: untagged rows you still treat as nouns (pos IS NULL) — uncomment if desired
--- INSERT INTO public.noun_forms (vocab_id, nom_sg, acc_sg, gen_sg, nom_pl)
--- SELECT v.id, i.nom_sg, i.acc_sg, i.gen_sg, i.nom_pl
--- FROM public.vocab v
--- CROSS JOIN LATERAL public._noun_forms_infer(public._lemma_strip_article(v.greek)) AS i(nom_sg, acc_sg, gen_sg, nom_pl)
--- WHERE v.pos IS NULL
---   AND NOT EXISTS (SELECT 1 FROM public.noun_forms nf WHERE nf.vocab_id = v.id)
---   AND i.nom_sg IS NOT NULL
--- ON CONFLICT (vocab_id) DO UPDATE SET
---   nom_sg = EXCLUDED.nom_sg, acc_sg = EXCLUDED.acc_sg, gen_sg = EXCLUDED.gen_sg, nom_pl = EXCLUDED.nom_pl;
 
 COMMENT ON FUNCTION public._lemma_strip_article(text) IS 'Sprint 7 noun backfill helper — strip leading article for declension stem.';
 COMMENT ON FUNCTION public._noun_forms_infer(text) IS 'Sprint 7 noun backfill — heuristic 4-case snapshot; irregulars need manual edit.';
