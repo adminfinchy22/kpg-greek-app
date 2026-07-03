@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isCloseGreek, isCorrectGreek } from '../lib/greekMatch'
 import { PERSON_LABEL_EL } from '../lib/verbLabels'
+import { completeTrainingSession } from '../lib/trainingCompletion'
 import { useWordExamples } from '../hooks/useWordExamples'
 import { useTrainingSession } from '../hooks/useTrainingSession'
 import type { VerbForm, VocabEntry, VerbPerson } from '../types'
@@ -12,7 +13,7 @@ interface Props {
   /** Pre-fetched so the step queue includes conjugation before first paint. */
   verbFormMap: Map<number, VerbForm[]>
   onClose: () => void
-  onComplete: (vocabIds: number[]) => void
+  onComplete: (vocabIds: number[]) => void | Promise<void>
 }
 
 export default function TrainingSession({
@@ -27,6 +28,8 @@ export default function TrainingSession({
   const [typingInput, setTypingInput] = useState('')
   const [typingResult, setTypingResult] = useState<'correct' | 'close' | 'wrong' | null>(null)
   const [strictMode, setStrictMode] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { step, idx, progressLabel, reset, goNext, submitGraded, correct, graded } = useTrainingSession(
     words,
@@ -34,19 +37,35 @@ export default function TrainingSession({
     verbFormMap,
   )
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset modal-local state when a new session opens */
   useEffect(() => {
     if (open) {
       reset()
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
+      setSaving(false)
+      setSaveError(null)
     }
   }, [open, reset, words])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleClose = useCallback(() => {
     setConfirmEnd(false)
     onClose()
   }, [onClose])
+
+  const handleComplete = useCallback(async () => {
+    setSaving(true)
+    setSaveError(null)
+    const result = await completeTrainingSession(words.map((w) => w.id), onComplete)
+    setSaving(false)
+    if (!result.ok) {
+      setSaveError(result.error)
+      return
+    }
+    handleClose()
+  }, [handleClose, onComplete, words])
 
   if (!open) return null
 
@@ -138,15 +157,18 @@ export default function TrainingSession({
               <p style={{ color: 'var(--cream-dim)', marginBottom: '20px' }}>
                 Верно: {correct} из {graded}
               </p>
+              {saveError && (
+                <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '12px' }}>
+                  {saveError}
+                </p>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  onComplete(words.map((w) => w.id))
-                  handleClose()
-                }}
+                onClick={() => void handleComplete()}
+                disabled={saving}
                 style={primaryBtn}
               >
-                Продолжить
+                {saving ? 'Сохраняем…' : 'Продолжить'}
               </button>
             </div>
           )}
