@@ -144,11 +144,7 @@ export default function App() {
 
   const onTrainingDone = useCallback(
     async (ids: number[]) => {
-      try {
-        await recordTrainingReview(ids)
-      } catch {
-        /* non-fatal */
-      }
+      await recordTrainingReview(ids)
       refetchProgress()
     },
     [recordTrainingReview, refetchProgress],
@@ -381,10 +377,7 @@ export default function App() {
         distractorPool={trainPool}
         verbFormMap={trainVerbMap}
         onClose={() => setTrainOpen(false)}
-        onComplete={(ids) => {
-          void onTrainingDone(ids)
-          setTrainOpen(false)
-        }}
+        onComplete={onTrainingDone}
       />
     </div>
   )

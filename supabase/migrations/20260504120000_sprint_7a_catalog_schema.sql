@@ -86,7 +86,7 @@ CREATE POLICY "word_examples_select_public"
   USING (true);
 
 -- ── word_status view (PostgREST) ─────────────────────────────────────────────
-CREATE OR REPLACE VIEW public.word_status AS
+CREATE OR REPLACE VIEW public.word_status WITH (security_invoker = true) AS
 SELECT
   v.id AS vocab_id,
   v.greek,
@@ -106,3 +106,4 @@ FROM public.vocab v
 LEFT JOIN public.user_progress up ON up.vocab_id = v.id;
 
 COMMENT ON VIEW public.word_status IS 'Derived study status per vocab row for catalog / due queries.';
+GRANT SELECT ON public.word_status TO anon, authenticated;
