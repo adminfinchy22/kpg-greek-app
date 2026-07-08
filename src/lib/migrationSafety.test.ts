@@ -56,4 +56,23 @@ describe('migration safety', () => {
       expect(dueAt).toBeLessThan(deleteProgress)
     }
   })
+
+  it('tags canonical verb rows before verb-only features depend on pos', () => {
+    for (const name of [
+      '20260502140000_sprint_6a_verb_schema_and_cleanup.sql',
+      '20260708110500_backfill_verb_pos.sql',
+    ]) {
+      const sql = activeSql(migration(name))
+      const tagVerbs = sql.indexOf("SET pos = 'verb' WHERE greek IN")
+      const semanticGroups = sql.indexOf("SET semantic_group = 'movement'")
+
+      expect(tagVerbs).toBeGreaterThan(-1)
+      expect(semanticGroups).toBeGreaterThan(-1)
+      expect(tagVerbs).toBeLessThan(semanticGroups)
+      expect(sql).toContain("'είμαι'")
+      expect(sql).toContain("'λέω'")
+      expect(sql).toContain("'προτιμώ'")
+      expect(sql).toContain("'χρησιμοποιώ'")
+    }
+  })
 })
