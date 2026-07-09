@@ -70,11 +70,46 @@ BEGIN
   LIMIT 1;
 
   IF id_keep IS NOT NULL AND id_drop IS NOT NULL THEN
-    -- Preserve “known” if either row was marked known (single global progress row per vocab_id)
-    UPDATE user_progress u
-    SET known = true
-    WHERE u.vocab_id = id_keep
-      AND EXISTS (SELECT 1 FROM user_progress d WHERE d.vocab_id = id_drop AND d.known = true);
+    -- Preserve progress before removing the duplicate alias row.
+    WITH merged AS (
+      SELECT
+        bool_or(COALESCE(known, false)) AS known,
+        MAX(COALESCE(review_count, 0)) AS review_count,
+        MAX(last_reviewed) AS last_reviewed
+      FROM public.user_progress
+      WHERE vocab_id IN (id_keep, id_drop)
+    ),
+    updated AS (
+      UPDATE public.user_progress u
+      SET
+        known = COALESCE(u.known, false) OR merged.known,
+        review_count = GREATEST(COALESCE(u.review_count, 0), merged.review_count),
+        last_reviewed = GREATEST(
+          COALESCE(u.last_reviewed, merged.last_reviewed),
+          COALESCE(merged.last_reviewed, u.last_reviewed)
+        )
+      FROM merged
+      WHERE u.vocab_id = id_keep
+        AND (
+          merged.known = true
+          OR merged.review_count > 0
+          OR merged.last_reviewed IS NOT NULL
+        )
+      RETURNING u.id
+    )
+    INSERT INTO public.user_progress (vocab_id, known, review_count, last_reviewed)
+    SELECT
+      id_keep,
+      merged.known,
+      merged.review_count,
+      merged.last_reviewed
+    FROM merged
+    WHERE NOT EXISTS (SELECT 1 FROM updated)
+      AND (
+        merged.known = true
+        OR merged.review_count > 0
+        OR merged.last_reviewed IS NOT NULL
+      );
 
     DELETE FROM user_progress WHERE vocab_id = id_drop;
     DELETE FROM vocab WHERE id = id_drop;
