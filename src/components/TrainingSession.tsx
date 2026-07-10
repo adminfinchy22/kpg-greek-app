@@ -36,6 +36,7 @@ export default function TrainingSession({
     verbFormMap,
   )
 
+  /* eslint-disable react-hooks/set-state-in-effect -- opening a fresh modal session intentionally resets local step UI */
   useEffect(() => {
     if (open) {
       reset()
@@ -46,6 +47,7 @@ export default function TrainingSession({
       setSaveError(null)
     }
   }, [open, reset, words])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleClose = useCallback(() => {
     setConfirmEnd(false)
