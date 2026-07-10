@@ -11,6 +11,7 @@ import {
   phraseCountByTopicId,
   sumGroupedPhraseCounts,
 } from './lib/phraseTopic'
+import { completeTrainingReview } from './lib/trainingCompletion'
 import CatalogHome from './components/CatalogHome'
 import TopicDetail from './components/TopicDetail'
 import ProfileTab from './components/ProfileTab'
@@ -144,12 +145,7 @@ export default function App() {
 
   const onTrainingDone = useCallback(
     async (ids: number[]) => {
-      try {
-        await recordTrainingReview(ids)
-      } catch {
-        /* non-fatal */
-      }
-      refetchProgress()
+      await completeTrainingReview(ids, recordTrainingReview, refetchProgress)
     },
     [recordTrainingReview, refetchProgress],
   )
@@ -381,10 +377,7 @@ export default function App() {
         distractorPool={trainPool}
         verbFormMap={trainVerbMap}
         onClose={() => setTrainOpen(false)}
-        onComplete={(ids) => {
-          void onTrainingDone(ids)
-          setTrainOpen(false)
-        }}
+        onComplete={onTrainingDone}
       />
     </div>
   )

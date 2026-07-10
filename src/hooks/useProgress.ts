@@ -10,6 +10,7 @@ type ProgressRow = {
 }
 
 type ExistingProgressRow = { id: number; review_count: number | null }
+type FetchProgressOptions = { silent?: boolean }
 
 function hoursFromNow(hours: number): string {
   return new Date(Date.now() + hours * 3600_000).toISOString()
@@ -23,34 +24,34 @@ export function useProgress() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchProgress = useCallback(() => {
-    setLoading(true)
+  const fetchProgress = useCallback(async (options: FetchProgressOptions = {}) => {
+    if (!options.silent) setLoading(true)
     setError(null)
-    supabase
+    const { data, error: qError } = await supabase
       .from('user_progress')
       .select('vocab_id, known, due_at, review_count, last_reviewed')
-      .then(({ data, error: qError }) => {
-        if (qError) {
-          setError(qError.message)
-        } else {
-          const rows = (data ?? []) as ProgressRow[]
-          const byId: Record<number, { known: boolean; due_at: string | null; review_count: number }> =
-            {}
-          const learned = new Set<number>()
-          for (const r of rows) {
-            const k = Boolean(r.known)
-            byId[r.vocab_id] = {
-              known: k,
-              due_at: r.due_at ?? null,
-              review_count: r.review_count ?? 0,
-            }
-            if (k) learned.add(r.vocab_id)
-          }
-          setProgressByVocabId(byId)
-          setKnown(learned)
+
+    if (qError) {
+      setError(qError.message)
+    } else {
+      const rows = (data ?? []) as ProgressRow[]
+      const byId: Record<number, { known: boolean; due_at: string | null; review_count: number }> =
+        {}
+      const learned = new Set<number>()
+      for (const r of rows) {
+        const k = Boolean(r.known)
+        byId[r.vocab_id] = {
+          known: k,
+          due_at: r.due_at ?? null,
+          review_count: r.review_count ?? 0,
         }
-        setLoading(false)
-      })
+        if (k) learned.add(r.vocab_id)
+      }
+      setProgressByVocabId(byId)
+      setKnown(learned)
+    }
+
+    if (!options.silent) setLoading(false)
   }, [])
 
   useEffect(() => {
@@ -163,8 +164,7 @@ export function useProgress() {
         if (insertError) throw insertError
       }
     }
-    await fetchProgress()
-  }, [fetchProgress])
+  }, [])
 
   const knownCount = known.size
   const progressRowCount = Object.keys(progressByVocabId).length

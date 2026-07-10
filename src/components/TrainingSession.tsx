@@ -12,7 +12,7 @@ interface Props {
   /** Pre-fetched so the step queue includes conjugation before first paint. */
   verbFormMap: Map<number, VerbForm[]>
   onClose: () => void
-  onComplete: (vocabIds: number[]) => void
+  onComplete: (vocabIds: number[]) => Promise<void>
 }
 
 export default function TrainingSession({
@@ -27,6 +27,8 @@ export default function TrainingSession({
   const [typingInput, setTypingInput] = useState('')
   const [typingResult, setTypingResult] = useState<'correct' | 'close' | 'wrong' | null>(null)
   const [strictMode, setStrictMode] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { step, idx, progressLabel, reset, goNext, submitGraded, correct, graded } = useTrainingSession(
     words,
@@ -40,6 +42,8 @@ export default function TrainingSession({
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
+      setSaving(false)
+      setSaveError(null)
     }
   }, [open, reset, words])
 
@@ -47,6 +51,21 @@ export default function TrainingSession({
     setConfirmEnd(false)
     onClose()
   }, [onClose])
+
+  const handleComplete = useCallback(async () => {
+    if (saving) return
+
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await onComplete(words.map((w) => w.id))
+      handleClose()
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Не удалось сохранить прогресс')
+    } finally {
+      setSaving(false)
+    }
+  }, [handleClose, onComplete, saving, words])
 
   if (!open) return null
 
@@ -138,15 +157,18 @@ export default function TrainingSession({
               <p style={{ color: 'var(--cream-dim)', marginBottom: '20px' }}>
                 Верно: {correct} из {graded}
               </p>
+              {saveError && (
+                <p style={{ color: 'var(--red)', fontSize: '13px', lineHeight: 1.45, marginBottom: '14px' }}>
+                  Прогресс не сохранён: {saveError}. Проверьте соединение и попробуйте ещё раз.
+                </p>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  onComplete(words.map((w) => w.id))
-                  handleClose()
-                }}
+                onClick={handleComplete}
+                disabled={saving}
                 style={primaryBtn}
               >
-                Продолжить
+                {saving ? 'Сохраняем…' : saveError ? 'Повторить сохранение' : 'Продолжить'}
               </button>
             </div>
           )}
