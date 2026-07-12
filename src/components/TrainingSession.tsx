@@ -12,7 +12,7 @@ interface Props {
   /** Pre-fetched so the step queue includes conjugation before first paint. */
   verbFormMap: Map<number, VerbForm[]>
   onClose: () => void
-  onComplete: (vocabIds: number[]) => void
+  onComplete: (vocabIds: number[]) => Promise<void>
 }
 
 export default function TrainingSession({
@@ -27,6 +27,8 @@ export default function TrainingSession({
   const [typingInput, setTypingInput] = useState('')
   const [typingResult, setTypingResult] = useState<'correct' | 'close' | 'wrong' | null>(null)
   const [strictMode, setStrictMode] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { step, idx, progressLabel, reset, goNext, submitGraded, correct, graded } = useTrainingSession(
     words,
@@ -34,19 +36,38 @@ export default function TrainingSession({
     verbFormMap,
   )
 
+  /* eslint-disable react-hooks/set-state-in-effect -- opening a fresh modal session intentionally resets local step UI */
   useEffect(() => {
     if (open) {
       reset()
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
+      setSaving(false)
+      setSaveError(null)
     }
   }, [open, reset, words])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleClose = useCallback(() => {
+    if (saving) return
     setConfirmEnd(false)
     onClose()
-  }, [onClose])
+  }, [onClose, saving])
+
+  const handleComplete = useCallback(async () => {
+    if (saving) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await onComplete(words.map((w) => w.id))
+      handleClose()
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'неизвестная ошибка')
+    } finally {
+      setSaving(false)
+    }
+  }, [handleClose, onComplete, saving, words])
 
   if (!open) return null
 
@@ -55,7 +76,7 @@ export default function TrainingSession({
       <div style={panelStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{progressLabel}</span>
-          <button type="button" onClick={() => setConfirmEnd(true)} style={ghostBtn}>
+          <button type="button" onClick={() => setConfirmEnd(true)} disabled={saving} style={ghostBtn}>
             ✕
           </button>
         </div>
@@ -67,7 +88,7 @@ export default function TrainingSession({
               <button type="button" onClick={() => setConfirmEnd(false)} style={ghostBtn}>
                 Продолжить
               </button>
-              <button type="button" onClick={handleClose} style={{ ...ghostBtn, color: 'var(--red)' }}>
+              <button type="button" onClick={handleClose} disabled={saving} style={{ ...ghostBtn, color: 'var(--red)' }}>
                 Выйти
               </button>
             </div>
@@ -138,15 +159,13 @@ export default function TrainingSession({
               <p style={{ color: 'var(--cream-dim)', marginBottom: '20px' }}>
                 Верно: {correct} из {graded}
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  onComplete(words.map((w) => w.id))
-                  handleClose()
-                }}
-                style={primaryBtn}
-              >
-                Продолжить
+              {saveError && (
+                <p style={{ color: 'var(--red)', fontSize: '13px', lineHeight: 1.5, marginBottom: '12px' }}>
+                  Прогресс не сохранён: {saveError}. Проверьте соединение и попробуйте ещё раз.
+                </p>
+              )}
+              <button type="button" onClick={handleComplete} disabled={saving} style={primaryBtn}>
+                {saving ? 'Сохраняем…' : saveError ? 'Повторить сохранение' : 'Продолжить'}
               </button>
             </div>
           )}
