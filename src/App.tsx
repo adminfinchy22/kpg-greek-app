@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { shuffleCopy } from './lib/shuffle'
 import { fetchVerbFormsMap } from './lib/fetchVerbFormsMap'
+import { completeTrainingReview } from './lib/trainingCompletion'
 import { usePhrases } from './hooks/usePhrases'
 import { useProgress } from './hooks/useProgress'
 import { useTopics, useVocab } from './hooks/useVocab'
@@ -144,12 +145,7 @@ export default function App() {
 
   const onTrainingDone = useCallback(
     async (ids: number[]) => {
-      try {
-        await recordTrainingReview(ids)
-      } catch {
-        /* non-fatal */
-      }
-      refetchProgress()
+      await completeTrainingReview(ids, recordTrainingReview, refetchProgress)
     },
     [recordTrainingReview, refetchProgress],
   )
@@ -381,10 +377,7 @@ export default function App() {
         distractorPool={trainPool}
         verbFormMap={trainVerbMap}
         onClose={() => setTrainOpen(false)}
-        onComplete={(ids) => {
-          void onTrainingDone(ids)
-          setTrainOpen(false)
-        }}
+        onComplete={onTrainingDone}
       />
     </div>
   )
