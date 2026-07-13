@@ -10,7 +10,7 @@ function emptyBuckets(): Record<StatusBucket, number> {
   return { new: 0, studying: 0, due: 0, learned: 0 }
 }
 
-export function useWordStatus(topicId: number | null) {
+export function useWordStatus(topicId: number | null, refreshKey = 0) {
   const [rows, setRows] = useState<WordStatusRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +30,7 @@ export function useWordStatus(topicId: number | null) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount / topicId / refetch
     fetchRows()
-  }, [fetchRows])
+  }, [fetchRows, refreshKey])
 
   const counts = useMemo(() => {
     const c = emptyBuckets()

@@ -14,6 +14,7 @@ interface Props {
   vocab: VocabEntry[]
   known: Set<number>
   knownCountInTopic: number
+  wordStatusRefreshKey?: number
   onToggleKnown: (id: number) => void
   onBack: () => void
   onRequestTraining: (words: VocabEntry[], pool: VocabEntry[]) => void
@@ -31,6 +32,7 @@ export default function TopicDetail({
   vocab,
   known,
   knownCountInTopic,
+  wordStatusRefreshKey = 0,
   onToggleKnown,
   onBack,
   onRequestTraining,
@@ -38,7 +40,7 @@ export default function TopicDetail({
   const [mode, setMode] = useState<StudyMode>('flashcard')
   const [detailWord, setDetailWord] = useState<VocabEntry | null>(null)
 
-  const { rows: statusRows, dueList } = useWordStatus(topic.id)
+  const { rows: statusRows, dueList } = useWordStatus(topic.id, wordStatusRefreshKey)
   const statusById = useMemo(() => {
     const m = new Map<number, string>()
     for (const r of statusRows) m.set(r.vocab_id, r.status)

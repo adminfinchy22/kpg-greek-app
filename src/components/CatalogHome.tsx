@@ -6,6 +6,7 @@ import { aggregateStatusByTopic, useWordStatus } from '../hooks/useWordStatus'
 interface Props {
   topics: Topic[]
   allVocab: VocabEntry[]
+  wordStatusRefreshKey?: number
   onOpenTopic: (topicId: number) => void
   onLearnDue: (words: VocabEntry[]) => void
 }
@@ -18,9 +19,9 @@ function countWordsInTopic(allVocab: VocabEntry[], topicId: number): number {
   return allVocab.filter((v) => v.topic_id === topicId).length
 }
 
-export default function CatalogHome({ topics, allVocab, onOpenTopic, onLearnDue }: Props) {
+export default function CatalogHome({ topics, allVocab, wordStatusRefreshKey = 0, onOpenTopic, onLearnDue }: Props) {
   const [q, setQ] = useState('')
-  const { rows: statusRows, dueList, loading, error } = useWordStatus(null)
+  const { rows: statusRows, dueList, loading, error } = useWordStatus(null, wordStatusRefreshKey)
   const byTopic = useMemo(() => aggregateStatusByTopic(statusRows), [statusRows])
 
   const dueWords = useMemo(() => {
