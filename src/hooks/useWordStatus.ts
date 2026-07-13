@@ -25,12 +25,12 @@ export function useWordStatus(topicId: number | null, refreshKey = 0) {
       else setRows((data ?? []) as WordStatusRow[])
       setLoading(false)
     })
-  }, [refreshKey, topicId])
+  }, [topicId])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount / topicId / refetch
     fetchRows()
-  }, [fetchRows])
+  }, [fetchRows, refreshKey])
 
   const counts = useMemo(() => {
     const c = emptyBuckets()

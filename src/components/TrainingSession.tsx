@@ -39,11 +39,13 @@ export default function TrainingSession({
   useEffect(() => {
     if (open) {
       reset()
+      /* eslint-disable react-hooks/set-state-in-effect -- reset modal-local state when a new session opens. */
       setTypingInput('')
       setTypingResult(null)
       setConfirmEnd(false)
       setSaving(false)
       setSaveError(null)
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [open, reset, words])
 
