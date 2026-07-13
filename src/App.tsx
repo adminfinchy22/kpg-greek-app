@@ -5,6 +5,7 @@ import { usePhrases } from './hooks/usePhrases'
 import { useProgress } from './hooks/useProgress'
 import { useTopics, useVocab } from './hooks/useVocab'
 import { useVerbs } from './hooks/useVerbs'
+import { completeTrainingReview } from './lib/trainingCompletion'
 import {
   buildNormalizedTopicNameById,
   filterGroupedPhrasesByTopicSelection,
@@ -42,6 +43,7 @@ export default function App() {
   const [trainWords, setTrainWords] = useState<VocabEntry[]>([])
   const [trainPool, setTrainPool] = useState<VocabEntry[]>([])
   const [trainVerbMap, setTrainVerbMap] = useState<Map<number, import('./types').VerbForm[]>>(new Map())
+  const [wordStatusRefreshKey, setWordStatusRefreshKey] = useState(0)
 
   const { topics, loading: topicsLoading, error: topicsError, refetch: refetchTopics } = useTopics()
   const {
@@ -144,14 +146,9 @@ export default function App() {
 
   const onTrainingDone = useCallback(
     async (ids: number[]) => {
-      try {
-        await recordTrainingReview(ids)
-      } catch {
-        /* non-fatal */
-      }
-      refetchProgress()
+      await completeTrainingReview(ids, recordTrainingReview, () => setWordStatusRefreshKey((key) => key + 1))
     },
-    [recordTrainingReview, refetchProgress],
+    [recordTrainingReview],
   )
 
   const shellStyle: React.CSSProperties = {
@@ -237,6 +234,7 @@ export default function App() {
             <CatalogHome
               topics={topics}
               allVocab={allVocab}
+              wordStatusRefreshKey={wordStatusRefreshKey}
               onOpenTopic={(id) => setCatalogTopicId(id)}
               onLearnDue={(words) => launchTraining(words, allVocab)}
             />
@@ -246,6 +244,7 @@ export default function App() {
               vocab={catalogTopicVocab}
               known={known}
               knownCountInTopic={knownCountInTopic}
+              wordStatusRefreshKey={wordStatusRefreshKey}
               onToggleKnown={toggleKnown}
               onBack={() => setCatalogTopicId(null)}
               onRequestTraining={(words, pool) => {
@@ -381,10 +380,7 @@ export default function App() {
         distractorPool={trainPool}
         verbFormMap={trainVerbMap}
         onClose={() => setTrainOpen(false)}
-        onComplete={(ids) => {
-          void onTrainingDone(ids)
-          setTrainOpen(false)
-        }}
+        onComplete={onTrainingDone}
       />
     </div>
   )
