@@ -1,11 +1,45 @@
 -- Sprint 6A — present indicative (join: vocab.greek = dictionary lemma)
--- If INSERT fails: column "person" missing → run 20260502140002_sprint_6a_verb_forms_rebuild_if_stale.sql first.
+-- Repair a legacy verb_forms table before any statement references the Sprint 6A columns.
 -- Idempotent: re-run after editing paradigms in scripts/gen-sprint-6a-verb-forms-sql.mjs
 
--- Replace all present-tense rows (re-run safe)
-DELETE FROM verb_forms WHERE tense = 'present';
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns c
+    WHERE c.table_schema = 'public'
+      AND c.table_name = 'verb_forms'
+      AND c.column_name = 'person'
+  ) THEN
+    DROP TABLE IF EXISTS public.verb_forms CASCADE;
+  END IF;
+END $$;
 
-INSERT INTO verb_forms (vocab_id, person, tense, form)
+CREATE TABLE IF NOT EXISTS public.verb_forms (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  vocab_id bigint NOT NULL REFERENCES public.vocab (id) ON DELETE CASCADE,
+  person text NOT NULL CHECK (person IN ('1sg', '2sg', '3sg', '1pl', '2pl', '3pl')),
+  tense text NOT NULL DEFAULT 'present',
+  form text NOT NULL,
+  UNIQUE (vocab_id, person, tense)
+);
+
+CREATE INDEX IF NOT EXISTS idx_verb_forms_vocab_id ON public.verb_forms (vocab_id);
+
+COMMENT ON TABLE public.verb_forms IS 'Present indicative (active/middle/passive as appropriate) for KPG verb lemmas in vocab.';
+
+ALTER TABLE public.verb_forms ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "verb_forms_select_public" ON public.verb_forms;
+CREATE POLICY "verb_forms_select_public"
+  ON public.verb_forms FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+-- Replace all present-tense rows (re-run safe)
+DELETE FROM public.verb_forms WHERE tense = 'present';
+
+INSERT INTO public.verb_forms (vocab_id, person, tense, form)
 SELECT v.id, x.person, 'present', x.form
 FROM (VALUES
   ('είμαι', '1sg', 'είμαι'),
