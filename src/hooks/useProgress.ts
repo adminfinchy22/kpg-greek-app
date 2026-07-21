@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createKeyedSingleFlight } from '../lib/keyedSingleFlight'
 import { supabase } from '../lib/supabase'
 
 type ProgressRow = {
@@ -22,6 +23,7 @@ export function useProgress() {
   >({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const toggleKnownFlights = useRef(createKeyedSingleFlight<number>())
 
   const fetchProgress = useCallback(() => {
     setLoading(true)
@@ -59,6 +61,8 @@ export function useProgress() {
   }, [fetchProgress])
 
   const toggleKnown = useCallback(async (vocabId: number) => {
+    if (!toggleKnownFlights.current.start(vocabId)) return
+
     const wasKnown = known.has(vocabId)
 
     setKnown((prev) => {
@@ -125,6 +129,8 @@ export function useProgress() {
       }
     } catch {
       rollback()
+    } finally {
+      toggleKnownFlights.current.finish(vocabId)
     }
   }, [known])
 
