@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { shuffleCopy } from './lib/shuffle'
+import { createLatestOnlyGate } from './lib/latestOnlyGate'
 import { fetchVerbFormsMap } from './lib/fetchVerbFormsMap'
 import { usePhrases } from './hooks/usePhrases'
 import { useProgress } from './hooks/useProgress'
@@ -42,6 +43,7 @@ export default function App() {
   const [trainWords, setTrainWords] = useState<VocabEntry[]>([])
   const [trainPool, setTrainPool] = useState<VocabEntry[]>([])
   const [trainVerbMap, setTrainVerbMap] = useState<Map<number, import('./types').VerbForm[]>>(new Map())
+  const launchTrainingGate = useRef(createLatestOnlyGate())
 
   const { topics, loading: topicsLoading, error: topicsError, refetch: refetchTopics } = useTopics()
   const {
@@ -135,7 +137,10 @@ export default function App() {
   const launchTraining = useCallback(async (words: VocabEntry[], pool: VocabEntry[]) => {
     const slice = words.slice(0, 3)
     if (!slice.length) return
+    // Ignore stale completions when the user double-clicks / starts overlapping launches.
+    const launchToken = launchTrainingGate.current.next()
     const m = await fetchVerbFormsMap(slice.filter((w) => w.pos === 'verb').map((w) => w.id))
+    if (!launchTrainingGate.current.isCurrent(launchToken)) return
     setTrainVerbMap(m)
     setTrainWords(slice)
     setTrainPool(pool.length ? pool : allVocab)
