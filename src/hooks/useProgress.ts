@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { buildToggleKnownUpdate } from '../lib/toggleKnownProgress'
 import { supabase } from '../lib/supabase'
 
 type ProgressRow = {
@@ -60,6 +61,13 @@ export function useProgress() {
 
   const toggleKnown = useCallback(async (vocabId: number) => {
     const wasKnown = known.has(vocabId)
+    const prevSnapshot = progressByVocabId[vocabId] ?? {
+      known: wasKnown,
+      due_at: null as string | null,
+      review_count: 0,
+    }
+    const optimisticNow = new Date().toISOString()
+    const optimistic = buildToggleKnownUpdate(wasKnown, prevSnapshot.review_count, optimisticNow)
 
     setKnown((prev) => {
       const next = new Set(prev)
@@ -67,13 +75,14 @@ export function useProgress() {
       else next.add(vocabId)
       return next
     })
-    setProgressByVocabId((prev) => {
-      const cur = prev[vocabId] ?? { known: false, due_at: null, review_count: 0 }
-      return {
-        ...prev,
-        [vocabId]: { ...cur, known: !wasKnown },
-      }
-    })
+    setProgressByVocabId((prev) => ({
+      ...prev,
+      [vocabId]: {
+        known: optimistic.known,
+        due_at: optimistic.due_at,
+        review_count: optimistic.review_count,
+      },
+    }))
 
     const rollback = () => {
       setKnown((prev) => {
@@ -82,10 +91,10 @@ export function useProgress() {
         else next.delete(vocabId)
         return next
       })
-      setProgressByVocabId((prev) => {
-        const cur = prev[vocabId] ?? { known: false, due_at: null, review_count: 0 }
-        return { ...prev, [vocabId]: { ...cur, known: wasKnown } }
-      })
+      setProgressByVocabId((prev) => ({
+        ...prev,
+        [vocabId]: prevSnapshot,
+      }))
     }
 
     try {
@@ -98,15 +107,12 @@ export function useProgress() {
       if (selectError) throw selectError
 
       const now = new Date().toISOString()
+      const patch = buildToggleKnownUpdate(wasKnown, existing?.review_count, now)
 
       if (existing) {
         const { error: updateError } = await supabase
           .from('user_progress')
-          .update({
-            known: !wasKnown,
-            last_reviewed: now,
-            review_count: (existing.review_count ?? 0) + 1,
-          })
+          .update(patch)
           .eq('vocab_id', vocabId)
 
         if (updateError) throw updateError
@@ -120,13 +126,14 @@ export function useProgress() {
           known: true,
           last_reviewed: now,
           review_count: 1,
+          due_at: null,
         })
         if (insertError) throw insertError
       }
     } catch {
       rollback()
     }
-  }, [known])
+  }, [known, progressByVocabId])
 
   /** After a training session: schedule next review (~24h) and bump review_count. */
   const recordTrainingReview = useCallback(async (vocabIds: number[]) => {
