@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { shuffleCopy } from '../lib/shuffle'
+import { pickTrainingWords } from '../lib/pickTrainingWords'
 import { useWordStatus } from '../hooks/useWordStatus'
 import type { Topic, VocabEntry } from '../types'
 import Flashcard from './Flashcard'
@@ -59,10 +60,10 @@ export default function TopicDetail({
     [onRequestTraining, vocab],
   )
 
-  const defaultPick = useCallback(() => {
-    const pool = dueInTopic.length >= 3 ? dueInTopic : shuffleCopy(vocab)
-    return pool.slice(0, 3)
-  }, [dueInTopic, vocab])
+  const defaultPick = useCallback(
+    () => pickTrainingWords(dueInTopic, vocab, 3),
+    [dueInTopic, vocab],
+  )
 
   const pills: { key: StudyMode; label: string }[] = [
     { key: 'flashcard', label: 'Карточки' },
