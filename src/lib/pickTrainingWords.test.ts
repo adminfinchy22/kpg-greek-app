@@ -38,7 +38,7 @@ describe('pickTrainingWords', () => {
     const picked = pickTrainingWords(due, topic, 3)
     expect(picked).toHaveLength(3)
     expect(picked[0]!.id).toBe(3)
-    expect(picked.map((w) => w.id)).not.toContain(duplicatedIds(picked))
+    expect(new Set(picked.map((w) => w.id)).size).toBe(3)
   })
 
   it('shuffles the full topic when nothing is due', () => {
@@ -53,12 +53,3 @@ describe('pickTrainingWords', () => {
     expect(pickTrainingWords([word(1)], [], 3)).toEqual([])
   })
 })
-
-function duplicatedIds(words: { id: number }[]): number | undefined {
-  const seen = new Set<number>()
-  for (const w of words) {
-    if (seen.has(w.id)) return w.id
-    seen.add(w.id)
-  }
-  return undefined
-}
